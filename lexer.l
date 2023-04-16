@@ -1,4 +1,6 @@
-${
+%option noyywrap
+
+%{
 #define T_eof 0
 #define T_and 1001
 #define T_int 1002
@@ -17,13 +19,12 @@ ${
 #define T_ref 1015
 #define T_if 1016
 #define T_return 1017
+#define T_lessorequal 1018
+#define T_greaterorequal 1019
+#define T_assign 1020
+#define T_id 1021
+#define T_constint 1022
 
-{L}({L}|{D}|\_)* { return T_id; }
-{D}+ { return T_constint; }
-
-"<=" { return T_lessorequal; }
-">=" { return T_greaterorequal; }
-"<-" { return T_assign; }
 %}
 
 L [a-zA-Z]
@@ -63,11 +64,16 @@ W [ \t\n\r]
 \$[^\$].*\n { /* single line comment - nothing */ }
 \$\$([^\$]+|\$[^\$])*\$\$ { /* multiple line comment - nothing */ }
 
-. { yyerror("lexical error"); }
+. { fprintf(stderr, "Illegal character %s", yytext);
+  exit(1); }
 
 %%
 
-void yyerror(const char *msg) {
-  fprintf(stderr, "%s\n", msg);
-  exit(1);
+int main() {
+    int token;
+    do {
+        token = yylex();
+        printf("token=%d, lexeme=\"%s\"\n", token, yytext);
+    } while (token!= T_eof);
+    return 0;
 }
