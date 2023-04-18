@@ -24,12 +24,17 @@
 #define T_assign 1020
 #define T_id 1021
 #define T_constint 1022
+#define T_constchar 1023
+#define T_conststring 1024
 
 %}
 
 L [a-zA-Z]
 D [0-9]
 W [ \t\n\r]
+COMMONCHAR [:print:]{-}[\\\'\"]
+ESCAPESEQ [ntr0\\\'\"]
+HEX [:xdigit:]
 
 %%
 
@@ -53,6 +58,8 @@ W [ \t\n\r]
 
 {L}({L}|{D}|\_)* { return T_id; }
 {D}+ { return T_constint; }
+\'(({COMMONCHAR})|(\\x{HEX}{HEX})|(\\{ESCAPESEQ}))\' {  return T_constchar; }
+\"(({COMMONCHAR})|(\\x{HEX}{HEX})|(\\{ESCAPESEQ}))*\" { /* not sure */ return T_conststring; }
 
 "<=" { return T_lessorequal; }
 ">=" { return T_greaterorequal; }
