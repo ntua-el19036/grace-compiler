@@ -23,18 +23,18 @@
 #define T_greaterorequal 1019
 #define T_assign 1020
 #define T_id 1021
-#define T_constint 1022
-#define T_constchar 1023
-#define T_conststring 1024
+#define T_int-const 1022
+#define T_char-const 1023
+#define T_string-literal 1024
 
 %}
 
 L [a-zA-Z]
 D [0-9]
 W [ \t\n\r]
-COMMONCHAR [:print:]{-}[\\\'\"]
+COMMONCHAR [ \!\#-\&\(-\[\]-\~]
 ESCAPESEQ [ntr0\\\'\"]
-HEX [:xdigit:]
+HEX [0-9a-fA-f]
 
 %%
 
@@ -57,9 +57,9 @@ HEX [:xdigit:]
 "return" { return T_return; }
 
 {L}({L}|{D}|\_)* { return T_id; }
-{D}+ { return T_constint; }
-\'(({COMMONCHAR})|(\\x{HEX}{HEX})|(\\{ESCAPESEQ}))\' {  return T_constchar; }
-\"(({COMMONCHAR})|(\\x{HEX}{HEX})|(\\{ESCAPESEQ}))*\" { /* not sure */ return T_conststring; }
+{D}+ { return T_int-const; }
+\'({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))\' {  return T_char-const; }
+\"({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))*\" { /* not sure */ return T_string-literal; }
 
 "<=" { return T_lessorequal; }
 ">=" { return T_greaterorequal; }
