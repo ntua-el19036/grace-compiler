@@ -33,8 +33,8 @@ L [a-zA-Z]
 D [0-9]
 W [ \t\n\r]
 COMMONCHAR [ \!\#-\&\(-\[\]-\~]
-ESCAPESEQ [ntr0\\\'\"]
-HEX [0-9a-fA-f]
+ESCAPESEQ \\[ntr0\\\'\"]
+HEX \\x[0-9a-fA-f][0-9a-fA-f]
 
 %%
 
@@ -58,8 +58,8 @@ HEX [0-9a-fA-f]
 
 {L}({L}|{D}|\_)* { return T_id; }
 {D}+ { return T_int_const; }
-\'({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))\' {  return T_char_const; }
-\"({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))*\" { /* not sure */ return T_string_literal; }
+\'({COMMONCHAR}|({ESCAPESEQ})|({HEX}))\' {  return T_char_const; }
+\"({COMMONCHAR}|({ESCAPESEQ})|({HEX}))*\" { /* not sure */ return T_string_literal; }
 
 "<=" { return T_lessorequal; }
 ">=" { return T_greaterorequal; }
