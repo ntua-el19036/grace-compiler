@@ -1,7 +1,6 @@
 %option noyywrap
 
 %{
-#define T_eof 0
 #define T_and 1001
 #define T_int 1002
 #define T_then 1003
@@ -81,6 +80,6 @@ int main() {
     do {
         token = yylex();
         printf("token=%d, lexeme=\"%s\"\n", token, yytext);
-    } while (token!= T_eof);
+    } while (token!= 0);
     return 0;
 }
