@@ -23,9 +23,9 @@
 #define T_greaterorequal 1019
 #define T_assign 1020
 #define T_id 1021
-#define T_int-const 1022
-#define T_char-const 1023
-#define T_string-literal 1024
+#define T_int_const 1022
+#define T_char_const 1023
+#define T_string_literal 1024
 
 %}
 
@@ -57,9 +57,9 @@ HEX [0-9a-fA-f]
 "return" { return T_return; }
 
 {L}({L}|{D}|\_)* { return T_id; }
-{D}+ { return T_int-const; }
-\'({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))\' {  return T_char-const; }
-\"({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))*\" { /* not sure */ return T_string-literal; }
+{D}+ { return T_int_const; }
+\'({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))\' {  return T_char_const; }
+\"({COMMONCHAR}|(\\{ESCAPESEQ})|(\\x{HEX}{HEX}))*\" { /* not sure */ return T_string_literal; }
 
 "<=" { return T_lessorequal; }
 ">=" { return T_greaterorequal; }
