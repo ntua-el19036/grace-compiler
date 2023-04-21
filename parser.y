@@ -31,10 +31,19 @@
 %nonassoc USIGN
 
 %%
-
-stmt_list:
-  /* nothing */
+program: func_def
 ;
+
+func_def: header local_def_list block
+;
+
+local_def_list:
+  /* nothing */
+| local_def_list local_def
+;
+
+header:
+"fun" T_id "(" //... to be continued
 
 %%
 
