@@ -1,31 +1,10 @@
 %option noyywrap
 
 %{
-#define T_and 1001
-#define T_int 1002
-#define T_then 1003
-#define T_char 1004
-#define T_mod 1005
-#define T_var 1006
-#define T_div 1007
-#define T_not 1008
-#define T_while 1009
-#define T_do 1010
-#define T_nothing 1011
-#define T_else 1012
-#define T_or 1013
-#define T_fun 1014
-#define T_ref 1015
-#define T_if 1016
-#define T_return 1017
-#define T_lessorequal 1018
-#define T_greaterorequal 1019
-#define T_assign 1020
-#define T_id 1021
-#define T_int_const 1022
-#define T_char_const 1023
-#define T_string_literal 1024
-
+#include <stdio.h>
+#include <stdlib.h>
+#include "lexer.h"
+#include "parser.h"
 %}
 
 L [a-zA-Z]
