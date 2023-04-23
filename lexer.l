@@ -54,11 +54,7 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 
 %%
 
-int main() {
-    int token;
-    do {
-        token = yylex();
-        printf("token=%d, lexeme=\"%s\"\n", token, yytext);
-    } while (token!= 0);
-    return 0;
+void yyerror(const char* msg) {
+    fprintf(stderr, "%s\n", msg);
+    exit(1);
 }

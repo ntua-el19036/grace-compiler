@@ -1,7 +1,7 @@
 programs
+compiler
 lexer
 lexer.c
-lexer.h
 lexer.o
 parser.h
 parser.output
