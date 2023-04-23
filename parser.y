@@ -4,13 +4,11 @@
 %}
 
 %token T_int "int"
-%token T_then "then"
 %token T_char "char"
 %token T_var "var"
 %token T_while "while"
 %token T_do "do"
 %token T_nothing "nothing"
-%token T_else "else"
 %token T_fun "fun"
 %token T_ref "ref"
 %token T_if "if"
@@ -21,6 +19,8 @@
 %token T_char_const
 %token T_string_literal
 
+%precedence "then"
+%precedence "else"
 
 %left T_or
 %left T_and
@@ -29,7 +29,6 @@
 %left '+' '-'
 %left '*' T_div T_mod
 %nonassoc USIGN
-
 %%
 program: func_def
 ;
@@ -145,9 +144,9 @@ expr:
 | func_call
 | "+" expr %prec USIGN
 | "-" expr %prec USIGN
-| expr "+" expr
-| expr "-" expr
-| expr "*" expr
+| expr '+' expr
+| expr '-' expr
+| expr '*' expr
 | expr T_div expr
 | expr T_mod expr
 ;
