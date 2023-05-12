@@ -1,6 +1,6 @@
 %{
-#include <stdio.h>
-#include "lexer.h"
+#include <cstdio>
+#include "lexer.hpp"
 %}
 
 %token T_int "int"

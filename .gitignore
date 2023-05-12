@@ -1,7 +1,9 @@
 programs
 compiler
 lexer
-lexer.c
+lexer.cpp
 lexer.o
-parser.h
+parser.hpp
 parser.output
+parser.cpp
+parser.o

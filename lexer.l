@@ -1,10 +1,10 @@
 %option noyywrap
 
 %{
-#include <stdio.h>
-#include <stdlib.h>
-#include "lexer.h"
-#include "parser.h"
+#include <cstdio>
+#include <cstdlib>
+#include "lexer.hpp"
+#include "parser.hpp"
 %}
 
 L [a-zA-Z]
@@ -15,6 +15,7 @@ ESCAPESEQ \\[ntr0\\\'\"]
 HEX \\x[0-9a-fA-f][0-9a-fA-f]
 
 %%
+
 
 "and" { return T_and; }
 "int" { return T_int; }
@@ -58,3 +59,13 @@ void yyerror(const char* msg) {
     fprintf(stderr, "%s\n", msg);
     exit(1);
 }
+
+/*
+int main () {
+  int token;
+  do {
+    token = yylex();
+    printf("token=%d, lexeme=\"%s\"\n", token, yytext);
+  } while (token != 0);
+}
+*/

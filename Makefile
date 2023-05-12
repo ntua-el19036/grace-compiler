@@ -1,27 +1,27 @@
-CC=gcc
-CFLAGS=-Wall
+CXX=c++
+CXXFLAGS=-Wall
 
 default: compiler
 
 lexer: lexer.l
-	flex -o lexer.c lexer.l
-	$(CC) $(CFLAGS) -o lexer lexer.c
+	flex -o lexer.cpp lexer.l
+	$(CXX) -o lexer lexer.cpp
 
 compiler: lexer.o parser.o
-	$(CC) $(CFLAGS) -o $@ $^ -lfl
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-lexer.c: lexer.l
+lexer.cpp: lexer.l
 	flex -s -o $@ $<
 
-lexer.o: lexer.c lexer.h parser.h
+lexer.o: lexer.cpp lexer.hpp parser.hpp
 
-parser.c parser.h: parser.y
-	bison -dv -o $@ $<
+parser.cpp parser.hpp: parser.y
+	bison -dv -t -o $@ $<
 
-parser.o: parser.c parser.h
+parser.o: parser.cpp parser.hpp
 
 clean:
-	$(RM) *.o parser.c parser.h lexer lexer.c core *~
+	$(RM) *.o parser.cpp parser.hpp lexer lexer.cpp core *~
 
 distclean: clean
 	$(RM) compiler
