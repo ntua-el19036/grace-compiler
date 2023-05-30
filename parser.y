@@ -1,7 +1,12 @@
+%code requires{
+    #include <string>
+    }
+
 %{
 #include <cstdio>
 #include "lexer.hpp"
 %}
+
 
 %token T_int "int"
 %token T_char "char"
@@ -14,21 +19,36 @@
 %token T_if "if"
 %token T_return "return"
 %token T_assign "<-"
-%token T_id
-%token T_int_const
-%token T_char_const
-%token T_string_literal
+%token<var> T_id
+%token<num> T_int_const
+%token<charval> T_char_const
+%token<stringval> T_string_literal
 
 %precedence T_then
 %precedence T_else
 
-%left T_or
-%left T_and
-%nonassoc T_not
-%nonassoc '=' '#' '<' '>' T_lessorequal T_greaterorequal
-%left '+' '-'
-%left '*' T_div T_mod
+%left<op> T_or
+%left<op> T_and
+%nonassoc<op> T_not
+%nonassoc<op> '=' '#' '<' '>' T_lessorequal T_greaterorequal
+%left<op> '+' '-'
+%left<op> '*' T_div T_mod
 %nonassoc USIGN
+
+%union {
+    Block *block;
+    Stmt *stmt;
+    Expr *expr;
+    int num;
+    std::string *var;
+    std::string *op;
+    char charval;
+    std::string *stringval;
+}
+
+%type<stmt>  stmt
+%type<expr>  expr
+
 %%
 
 program: func_def
@@ -128,24 +148,24 @@ expr_list:
 
 func_call:
   T_id '(' expr_list ')'
-| T_id '(' ')'
+| T_id '(' ')' 
 ;
 
 l_value:
-  T_id
-| T_string_literal
+  T_id { $$ = new Id($1); }
+| T_string_literal { $$ = new StringLiteral($1); }
 | l_value '[' expr ']'
 ;
 
 expr:
-  T_int_const
-| T_char_const
-| l_value
-| '(' expr ')'
-| func_call
-| '+' expr %prec USIGN
-| '-' expr %prec USIGN
-| expr '+' expr
+  T_int_const { $$ = new IntConst($1); }
+| T_char_const { $$ = new CharConst($1); }
+| l_value { $$ = $1; }
+| '(' expr ')' { $$ = $2; }
+| func_call { $$ = $1; }
+| '+' expr %prec USIGN { $$ = $2; }
+| '-' expr %prec USIGN { $$ = new Negative($2); }
+| expr '+' expr 
 | expr '-' expr
 | expr '*' expr
 | expr T_div expr

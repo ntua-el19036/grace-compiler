@@ -1,6 +1,9 @@
 %option noyywrap
 
+
+
 %{
+#include <string>
 #include <cstdio>
 #include <cstdlib>
 #include "lexer.hpp"
@@ -35,16 +38,17 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 "if" { return T_if; }
 "return" { return T_return; }
 
-{L}({L}|{D}|\_)* { return T_id; }
-{D}+ { return T_int_const; }
-\'({COMMONCHAR}|({ESCAPESEQ})|({HEX}))\' {  return T_char_const; }
-\"({COMMONCHAR}|({ESCAPESEQ})|({HEX}))*\" { /* not sure */ return T_string_literal; }
+{L}({L}|{D}|\_)* { yylval.var = new std::string(yytext); return T_id; }
+{D}+ { yylval.num = atoi(yytext); return T_int_const; }
+\'({COMMONCHAR}|({ESCAPESEQ})|({HEX}))\' { yylval.charval = yytext[1]; return T_char_const; }
+\"({COMMONCHAR}|({ESCAPESEQ})|({HEX}))*\" { yylval.stringval = new std::string(yytext+1,yyleng-2);
+/* not sure */ return T_string_literal; }
 
-"<=" { return T_lessorequal; }
-">=" { return T_greaterorequal; }
+"<=" { yylval.op = new std::string(yytext); return T_lessorequal; }
+">=" { yylval.op = new std::string(yytext); return T_greaterorequal; }
 "<-" { return T_assign; }
 
-[\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { return yytext[0]; }
+[\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { yylval.op = new std::string(yytext); return yytext[0]; }
 
 {W}+ { /* nothing */ }
 \$[^\$].*\n { /* single line comment - nothing */ }
