@@ -64,7 +64,7 @@ public:
   }
     
 private:
-    string var;
+    std::string var;
 };
 
 
@@ -79,20 +79,129 @@ public:
   }
     
 private:
-    string stringval;
+    std::string stringval;
 };    
 
 class Negative: public Expr {
 public:
     Negative(Expr *e): expr(e) {}
+    ~Negative() { delete expr; }
     virtual void printOn(std::ostream &out) const override {
     out << "Negative(" << *expr << ")";
   }
   virtual int eval() const override {
-    return -expr->eval();
+    return -(expr->eval());
   }
         
 private:
     Expr *expr;
     
 };
+
+class Binop: public Expr {
+public:
+    BinOp(Expr *l, const std::string &o, Expr *r): left(l), op(o), right(r) {}
+    ~BinOp() { delete left; delete right; }
+    virtual void printOn(std::ostream &out) const override {
+        out << *op << "(" << *left << ", " << *right << ")";
+    }
+    virtual int eval() const override {
+        switch (*op) {
+            case "+": return left->eval() + right->eval();
+            case "-": return left->eval() - right->eval();
+            case "*": return left->eval() * right->eval();
+            case "div": return left->eval() / right->eval();
+            case "mod": return left->eval() % right->eval();
+            case "=" : return left->eval() == right->eval();
+            case "#" : return left->eval() != right->eval();
+            case "<" : return left->eval() < right->eval();
+            case ">" : return left->eval() > right->eval();
+            case "<=" : return left->eval() <= right->eval();
+            case ">=" : return left->eval() >= right->eval();
+            
+            case "and" : return { !(left->eval()) ? false : right->eval() };
+            case "or" : return { (left->eval()) ? true : right->eval() };
+        }
+        return 0;  // this will never be reached
+    }
+private:
+    Expr *left;
+    std::string *op;
+    Expr *right;
+};
+
+class Not: public Expr {
+public:
+    Not(Expr *c): cond(e) {}
+    ~Not() { delete cond; }
+    virtual void printOn(std::ostream &out) const override {
+        out << "Not" << "(" << *cond << ")";
+    }
+    virtual int eval() const override {
+        return !(cond->eval());
+    }
+    
+private:
+        Expr *cond;
+}
+
+class Block: public Stmt {
+public:
+    Block(): stmt_list() {}
+    ~Block(): { for(Stmt *s : stmt_list) delete s; }
+    void append_stmt(Stmt *s) { stmt_list.push_back(s); }
+    void printOn(std::ostream &out) const override {
+        out << "Block(";
+        bool first = true;
+        for (const auto &s : stmt_list) {
+        if (!first) out << ", ";
+        first = false;
+        out << *s;
+        }
+        out << ")";
+    }
+    void run() const override {
+        for(Stmt *s : stmt_list) s->run();
+    }
+    
+private:
+    std::vector<Stmt *> stmt_list;
+}
+
+class If: public Stmt {
+public:
+    If(Expr *c, Stmt *s1, Stmt *2 = nullptr): cond(c), stmt1(s1), stmt2(s2) {}
+    ~If() { delete cond; delete stmt1; delete stmt2; }
+    void printOn(std::ostream &out) const override {
+        out << "If(" << *cond << ", " << *stmt1;
+        if (stmt2 != nullptr) out << ", " << *stmt2;
+        out << ")";
+    }
+    void run() const override {
+        if(cond->eval())
+            stmt1->run();
+        else
+            stmt2->run();
+    }
+    
+private:
+    Expr *cond;
+    Stmt *stmt1;
+    Stmt *stmt2;
+}
+
+class While: public Stmt {
+public:
+    While(Expr *c, Stmt *s): cond(c), stmt(s) {}
+    ~While() { delete cond; delete stmt; }
+    void printOn(std::ostream &out) const override {
+        out << "While(" << *cond << " do " << *stmt; out << ")";
+    }
+    void run() const override {
+        while(cond->eval()) stmt->run();
+    }
+
+private:
+    Expr *cond;
+    Stmt *stmt;
+}

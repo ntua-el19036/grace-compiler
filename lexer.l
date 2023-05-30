@@ -20,19 +20,19 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 %%
 
 
-"and" { return T_and; }
+"and" { yylval.op = new std::string(yytext); return T_and; }
 "int" { return T_int; }
 "then" { return T_then; }
 "char" { return T_char; }
-"mod" { return T_mod; }
+"mod" { yylval.op = new std::string(yytext); return T_mod; }
 "var" { return T_var; }
-"div" { return T_div; }
+"div" { yylval.op = new std::string(yytext); return T_div; }
 "not" { return T_not; }
 "while" { return T_while; }
 "do" { return T_do; }
 "nothing" { return T_nothing; }
 "else" { return T_else; }
-"or" { return T_or; }
+"or" { yylval.op = new std::string(yytext); return T_or; }
 "fun" { return T_fun; }
 "ref" { return T_ref; }
 "if" { return T_if; }
