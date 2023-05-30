@@ -98,7 +98,11 @@ private:
     
 };
 
+<<<<<<< HEAD
 class BinOp: public Expr {
+=======
+class Binop: public Expr {
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
 public:
     BinOp(Expr *l, const std::string &o, Expr *r): left(l), op(o), right(r) {}
     ~BinOp() { delete left; delete right; }
@@ -132,7 +136,11 @@ private:
 
 class Not: public Expr {
 public:
+<<<<<<< HEAD
     Not(Expr *c): cond(c) {}
+=======
+    Not(Expr *c): cond(e) {}
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
     ~Not() { delete cond; }
     virtual void printOn(std::ostream &out) const override {
         out << "Not" << "(" << *cond << ")";
@@ -143,12 +151,20 @@ public:
     
 private:
         Expr *cond;
+<<<<<<< HEAD
 };
+=======
+}
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
 
 class Block: public Stmt {
 public:
     Block(): stmt_list() {}
+<<<<<<< HEAD
     ~Block() { for(Stmt *s : stmt_list) delete s; }
+=======
+    ~Block(): { for(Stmt *s : stmt_list) delete s; }
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
     void append_stmt(Stmt *s) { stmt_list.push_back(s); }
     void printOn(std::ostream &out) const override {
         out << "Block(";
@@ -166,11 +182,19 @@ public:
     
 private:
     std::vector<Stmt *> stmt_list;
+<<<<<<< HEAD
 };
 
 class If: public Stmt {
 public:
     If(Expr *c, Stmt *s1, Stmt *s2 = nullptr): cond(c), stmt1(s1), stmt2(s2) {}
+=======
+}
+
+class If: public Stmt {
+public:
+    If(Expr *c, Stmt *s1, Stmt *2 = nullptr): cond(c), stmt1(s1), stmt2(s2) {}
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
     ~If() { delete cond; delete stmt1; delete stmt2; }
     void printOn(std::ostream &out) const override {
         out << "If(" << *cond << ", " << *stmt1;
@@ -188,7 +212,11 @@ private:
     Expr *cond;
     Stmt *stmt1;
     Stmt *stmt2;
+<<<<<<< HEAD
 };
+=======
+}
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
 
 class While: public Stmt {
 public:
@@ -204,4 +232,8 @@ public:
 private:
     Expr *cond;
     Stmt *stmt;
+<<<<<<< HEAD
 };
+=======
+}
+>>>>>>> c1b1712d88b6924838c59398ba5c86b50b2aa51a
