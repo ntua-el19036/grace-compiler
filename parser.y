@@ -48,13 +48,19 @@
 
 %type<stmt>  stmt
 %type<expr>  expr
+%type<block> block stmt_list
 
 %%
 
-program: func_def
+program: 
+    func_def { 
+        std::cout << "AST: " << *$1 << std::endl;
+    //     $1->run(); 
+    }
 ;
 
-func_def: header local_def_list block
+func_def: 
+    header local_def_list block
 ;
 
 local_def_list:
@@ -121,24 +127,24 @@ var_def:
 ;
 
 stmt:
-  ';'
+  ';' { $$ = new EmptyStmt(); }
 | l_value "<-" expr ';'
-| block
-| func_call ';'
-| "if" cond T_then stmt //ambiguous <3
-| "if" cond T_then stmt T_else stmt //ambiguous <3
-| "while" cond "do" stmt
-| "return" ';'
+| block { $$ = $1; }
+| func_call ';' { $$ = $1; }
+| "if" cond T_then stmt { $$ = new If($2, $4); }
+| "if" cond T_then stmt T_else stmt { $$ = new If($2, $4, $6); }
+| "while" cond "do" stmt { $$ = new While($2, $4); }
+| "return" ';' 
 | "return" expr ';'
 ;
 
 stmt_list:
-  /* nothing */
-| stmt stmt_list
+  /* nothing */ { $$ = new Block(); }
+| stmt_list stmt { $1->append_stmt($2); $$ = $1; }
 ;
 
 block:
-  '{' stmt_list '}'
+  '{' stmt_list '}' { $$ = $2; }
 ;
 
 expr_list:
@@ -147,8 +153,8 @@ expr_list:
 ;
 
 func_call:
-  T_id '(' expr_list ')'
-| T_id '(' ')' 
+  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3); }
+| T_id '(' ')' { $$ = new FunctionCall($1); }
 ;
 
 l_value:
@@ -165,24 +171,24 @@ expr:
 | func_call { $$ = $1; }
 | '+' expr %prec USIGN { $$ = $2; }
 | '-' expr %prec USIGN { $$ = new Negative($2); }
-| expr '+' expr 
-| expr '-' expr
-| expr '*' expr
-| expr T_div expr
-| expr T_mod expr
+| expr '+' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr '-' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr '*' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr T_div expr { $$ = new Binop( $1, $2, $3 ); } 
+| expr T_mod expr { $$ = new Binop( $1, $2, $3 ); }
 ;
 
 cond:
-  '(' cond ')'
-| T_not cond
-| cond T_and cond
-| cond T_or cond
-| expr '=' expr
-| expr '#' expr
-| expr '<' expr
-| expr '>' expr
-| expr T_lessorequal expr
-| expr T_greaterorequal expr
+  '(' cond ')' { $$ = $1; }
+| T_not cond { $$ = new Not($2); }
+| cond T_and cond { $$ = new Binop( $1, $2, $3 ); }
+| cond T_or cond { $$ = new Binop( $1, $2, $3 ); }
+| expr '=' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr '#' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr '<' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr '>' expr { $$ = new Binop( $1, $2, $3 ); }
+| expr T_lessorequal expr { $$ = new Binop( $1, $2, $3 ); }
+| expr T_greaterorequal expr { $$ = new Binop( $1, $2, $3 ); }
 ;
 
 
