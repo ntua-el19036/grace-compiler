@@ -20,19 +20,19 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 %%
 
 
-"and" { yylval.op = new std::string(yytext); return T_and; }
+"and" { yylval.op = '&'; return T_and; }
 "int" { return T_int; }
 "then" { return T_then; }
 "char" { return T_char; }
-"mod" { yylval.op = new std::string(yytext); return T_mod; }
+"mod" { yylval.op = '%'; return T_mod; }
 "var" { return T_var; }
-"div" { yylval.op = new std::string(yytext); return T_div; }
+"div" { yylval.op = '/'; return T_div; }
 "not" { return T_not; }
 "while" { return T_while; }
 "do" { return T_do; }
 "nothing" { return T_nothing; }
 "else" { return T_else; }
-"or" { yylval.op = new std::string(yytext); return T_or; }
+"or" { yylval.op = '|'; return T_or; }
 "fun" { return T_fun; }
 "ref" { return T_ref; }
 "if" { return T_if; }
@@ -44,11 +44,11 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 \"({COMMONCHAR}|({ESCAPESEQ})|({HEX}))*\" { yylval.stringval = new std::string(yytext+1,yyleng-2);
 /* not sure */ return T_string_literal; }
 
-"<=" { yylval.op = new std::string(yytext); return T_lessorequal; }
-">=" { yylval.op = new std::string(yytext); return T_greaterorequal; }
+"<=" { yylval.op = 'l'; return T_lessorequal; }
+">=" { yylval.op = 'g'; return T_greaterorequal; }
 "<-" { return T_assign; }
 
-[\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { yylval.op = new std::string(yytext); return yytext[0]; }
+[\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { yylval.op = yytext[0]; return yytext[0]; }
 
 {W}+ { /* nothing */ }
 \$[^\$].*\n { /* single line comment - nothing */ }

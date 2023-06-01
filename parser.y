@@ -5,6 +5,9 @@
 %{
 #include <cstdio>
 #include "lexer.hpp"
+#include "ast.hpp"
+
+SymbolTable st;
 %}
 
 
@@ -36,19 +39,23 @@
 %nonassoc USIGN
 
 %union {
+    AST * ast;
     Block *block;
     Stmt *stmt;
     Expr *expr;
     int num;
     std::string *var;
-    std::string *op;
+    char op;
     char charval;
     std::string *stringval;
+    DataType data_type;
 }
 
 %type<stmt>  stmt
-%type<expr>  expr
-%type<block> block stmt_list
+%type<expr>  expr cond
+%type<block> block stmt_list 
+%type<data_type> ret_type data_type
+%type<ast> program func_def local_def local_def_list header func_param_def func_param_def_list id_list func_call
 
 %%
 
@@ -89,8 +96,8 @@ id_list:
 ;
 
 data_type:
-  "int"
-| "char"
+  "int" { $$ = TYPE_int; }
+| "char" { $$ = TYPE_char; }
 ;
 
 type:
@@ -103,8 +110,8 @@ array_dimension:
 ;
 
 ret_type:
-  data_type
-| "nothing"
+  data_type { $$ = $1; }
+| "nothing" { $$ = TYPE_nothing; }
 ;
 
 func_param_type:
@@ -123,7 +130,7 @@ func_decl:
 ;
 
 var_def:
-  "var" id_list ':' type ';'
+  "var" id_list ':' type ';' { $$ = new VarDecl($1)}
 ;
 
 stmt:

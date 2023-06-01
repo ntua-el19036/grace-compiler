@@ -13,12 +13,12 @@ compiler: lexer.o parser.o
 lexer.cpp: lexer.l
 	flex -s -o $@ $<
 
-lexer.o: lexer.cpp lexer.hpp parser.hpp
+lexer.o: lexer.cpp lexer.hpp parser.hpp ast.hpp
 
 parser.cpp parser.hpp: parser.y
 	bison -dv -t -o $@ $<
 
-parser.o: parser.cpp parser.hpp
+parser.o: parser.cpp parser.hpp ast.hpp
 
 clean:
 	$(RM) *.o parser.cpp parser.hpp lexer lexer.cpp core *~

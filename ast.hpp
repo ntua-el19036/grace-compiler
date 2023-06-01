@@ -3,15 +3,26 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include "symbol.hpp"
 
 class AST {
 public:
   virtual ~AST() {}
+  virtual void sem() {};
   virtual void printOn(std::ostream &out) const = 0;
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
   t.printOn(out);
+  return out;
+}
+
+inline std::ostream &operator<<(std::ostream &out, DataType t) {
+  switch (t) {
+    case TYPE_int:  out << "int";  break;
+    case TYPE_char: out << "char"; break;
+    case TYPE_nothing: out << "nothing"; break;
+  }
   return out;
 }
 
@@ -23,6 +34,32 @@ public:
 class Stmt: public AST {
 public:
   virtual void run() const = 0;
+};
+
+class VarDecl: public AST {
+public:
+    VarDecl(const std::string &s, DataType t): var(s), datatype(t) {}
+    void sem() override {
+        st.insert(var, datatype);
+    }
+    void printOn(std::ostream &out) const override {
+        out << "VarDecl(" << var << ": " << datatype << ")";
+  }
+private:
+  std::string var;
+  DataType datatype;
+};
+
+class FunDecl: public AST {
+public:
+    FunDecl(const std::string &s, DataType t): var(s), rettype(t) {}
+    void sem() override {
+        st.insert(var, rettype);
+
+    }
+private:
+  std::string var;
+  DataType rettype;
 };
 
 class IntConst: public Expr {
@@ -60,7 +97,7 @@ public:
     out << "Id(" << var << ")";
   }
   virtual int eval() const override {
-    return var;
+    return 0;//var;
   }
     
 private:
@@ -75,7 +112,7 @@ public:
     out << "StringLiteral(" << stringval << ")";
   }
   virtual int eval() const override {
-    return stringval;
+    return 0; //stringval;
   }
     
 private:
@@ -100,33 +137,33 @@ private:
 
 class BinOp: public Expr {
 public:
-    BinOp(Expr *l, const std::string &o, Expr *r): left(l), op(o), right(r) {}
+    BinOp(Expr *l, char o, Expr *r): left(l), op(o), right(r) {}
     ~BinOp() { delete left; delete right; }
     virtual void printOn(std::ostream &out) const override {
-        out << *op << "(" << *left << ", " << *right << ")";
+        out << op << "(" << *left << ", " << *right << ")";
     }
     virtual int eval() const override {
-        switch (*op) {
-            case "+": return left->eval() + right->eval();
-            case "-": return left->eval() - right->eval();
-            case "*": return left->eval() * right->eval();
-            case "div": return left->eval() / right->eval();
-            case "mod": return left->eval() % right->eval();
-            case "=" : return left->eval() == right->eval();
-            case "#" : return left->eval() != right->eval();
-            case "<" : return left->eval() < right->eval();
-            case ">" : return left->eval() > right->eval();
-            case "<=" : return left->eval() <= right->eval();
-            case ">=" : return left->eval() >= right->eval();
+        switch (op) {
+            case '+': return left->eval() + right->eval();
+            case '-': return left->eval() - right->eval();
+            case '*': return left->eval() * right->eval();
+            case '/': return left->eval() / right->eval();
+            case '%': return left->eval() % right->eval();
+            case '=' : return left->eval() == right->eval();
+            case '#' : return left->eval() != right->eval();
+            case '<' : return left->eval() < right->eval();
+            case '>' : return left->eval() > right->eval();
+            case 'l' : return left->eval() <= right->eval();
+            case 'g' : return left->eval() >= right->eval();
             
-            case "and" : return { !(left->eval()) ? false : right->eval() };
-            case "or" : return { (left->eval()) ? true : right->eval() };
+            case '&' : return { !(left->eval()) ? false : right->eval() };
+            case '|' : return { (left->eval()) ? true : right->eval() };
         }
         return 0;  // this will never be reached
     }
 private:
     Expr *left;
-    std::string *op;
+    char op;
     Expr *right;
 };
 
@@ -204,4 +241,27 @@ public:
 private:
     Expr *cond;
     Stmt *stmt;
+};
+
+class Block: public Stmt {
+public:
+    Block(): stmt_list() {}
+    ~Block() { for(Stmt *s : stmt_list) delete s; }
+    void append_stmt(Stmt *s) { stmt_list.push_back(s); }
+    void printOn(std::ostream &out) const override {
+        out << "Block(";
+        bool first = true;
+        for (const auto &s : stmt_list) {
+        if (!first) out << ", ";
+        first = false;
+        out << *s;
+        }
+        out << ")";
+    }
+    void run() const override {
+        for(Stmt *s : stmt_list) s->run();
+    }
+    
+private:
+    std::vector<Stmt *> stmt_list;
 };
