@@ -6,30 +6,46 @@
 extern void yyerror(const char *msg);
 
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
+enum EntryKind { FUNCTION, VARIABLE };
 
 struct STEntry {
-    
     DataType type;
+    EntryKind kind;
+    int param_count;
+    std::vector<DataType> paramTypes;
     int offset;
+
     STEntry() {}
-    STEntry(DataType t, int o) : type(t), offset(o) {}
+    STEntry(EntryKind k, DataType t, int o) : kind(k), type(t), offset(o) {}
+    STEntry(EntryKind k, DataType t, int o, std::vector<DataType> pt)
+      : kind(k), type(t), offset(o), param_count(pt.size()), paramTypes(pt) {}
 };
 
 class Scope {
  public:
   Scope(int o = -1) : offset(o) {}
+
   STEntry *lookup(std::string str) {
     if (locals.find(str) == locals.end()) return nullptr;
     return &(locals[str]);
   }
-  void insert(std::string str, DataType t) {
+
+  void insertVariable(std::string str, DataType t) {
     if (locals.find(str) != locals.end())
-      yyerror("Duplicate variable declaration");
-    locals[str] = STEntry(t, offset++);
+      yyerror("Duplicate declaration");
+    locals[str] = STEntry(VARIABLE, t, offset++);
   }
+
+  void insertFunction(std::string str, DataType t, std::vector<DataType> pt) {
+    if (locals.find(str) != locals.end())
+      yyerror("Duplicate declaration");
+    locals[str] = STEntry(FUNCTION, t, offset++, pt);
+  }
+
   int get_offset() {
     return offset;
   }
+
  private:
   std::map<std::string, STEntry> locals;
   int offset;
@@ -42,11 +58,14 @@ class SymbolTable {
       STEntry *e = s->lookup(str);
       if (e != nullptr) return e;
     }
-    yyerror("Variable not found");
+    yyerror("Identifier not found");
     return nullptr;
   }
-  void insert(std::string str, DataType t) {
-    scopes.back().insert(str, t);
+  void insertToStVariable(std::string str, DataType t) {
+    scopes.back().insertVariable(str, t);
+  }
+  void insertToStFunction(std::string str, DataType t, std::vector<DataType> pt) {
+    scopes.back().insertFunction(str, t, pt);
   }
   void push_scope() {
     int o = scopes.empty() ? 0 : scopes.back().get_offset();
@@ -55,6 +74,7 @@ class SymbolTable {
   void pop_scope() {
     scopes.pop_back();
   }
+
  private:
   std::vector<Scope> scopes;
 };
