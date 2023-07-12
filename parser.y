@@ -40,27 +40,29 @@ SymbolTable st;
 %nonassoc USIGN
 
 %union {
-  AST * ast;
+  AST *ast;
   Block *block;
   Stmt *stmt;
   Expr *expr;
   int num;
-  std::string var;
+  std::string *var;
   char op;
   char charval;
   std::string *stringval;
   DataType data_type;
   IdList *idlist;
-  FuncParamDef *funparamdef;
+  Type *type;
+  ArrayDimension *dimension;
 }
 
 %type<stmt>  stmt
 %type<expr>  expr cond expr_list
 %type<block> block stmt_list 
-%type<data_type> ret_type data_type func_param_type
-%type<ast> program func_def local_def local_def_list header func_param_def_list func_call type array_dimension var_def  l_value
+%type<data_type> ret_type data_type 
+%type<type> func_param_type type
+%type<dimension> array_dimension
+%type<ast> program func_def local_def local_def_list header func_param_def_list func_call var_def l_value func_param_def
 %type<idlist> id_list
-%type<funparamdef> func_param_def 
 
 %%
 
@@ -122,7 +124,7 @@ ret_type:
 ;
 
 func_param_type:
-  type { $$ = $1 }
+  type { $$ = $1; }
 | data_type '[' ']' array_dimension { $$ = new Type($1, $4, true); }
 ;
 

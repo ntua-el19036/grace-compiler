@@ -11,11 +11,11 @@ enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
 enum EntryKind { FUNCTION, VARIABLE, PARAM};
 
 struct STEntry {
-    DataType type;
     EntryKind kind;
+    DataType type;
+    int offset;
     int param_count;
     std::vector<DataType> paramTypes;
-    int offset;
     bool byRef;
 
     STEntry() {}

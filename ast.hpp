@@ -243,8 +243,8 @@ private:
 
 class IdList : public AST {
 public:
-  IdList(std::string i) { appendId(i); }
-  void appendId(std::string id) {
+  IdList(std::string *i) { appendId(i); }
+  void appendId(std::string *id) {
     idlist.push_back(id);
   }
   void printOn(std::ostream &out) const override {
@@ -253,20 +253,20 @@ public:
     for (const auto &id : idlist) {
       if (!first) out << ", ";
       first = false;
-      out << id;
+      out << *id;
     }
     out << ")";
   }
 private:
-  std::vector<std::string> idlist;
+  std::vector<std::string*> idlist;
 };
 
 
 class ArrayDimension: public AST {
 public:
   ArrayDimension(): dimensions() {}
-  ~ArrayDimension() { for (IntConst *d : dimensions) delete d; }
-  void append_dimension(IntConst * d) {
+  // ~ArrayDimension() { for (IntConst *d : dimensions) delete d; }
+  void append_dimension(int d) {
     dimensions.push_back(d);
   }
   int getDimension() const {
@@ -278,13 +278,13 @@ public:
     for (const auto &d : dimensions) {
       if (!first) out << ", ";
       first = false;
-      out << *d;
+      out << d;
     }
     out << ")";
   }
 
 private:
-  std::vector<IntConst *> dimensions;
+  std::vector<int> dimensions;
 };
 
 class Type: public AST {
