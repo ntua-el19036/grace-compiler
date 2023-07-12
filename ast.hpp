@@ -8,7 +8,6 @@
 class AST {
 public:
   virtual ~AST() {}
-  virtual void sem() {};
   virtual void printOn(std::ostream &out) const = 0;
 };
 
@@ -36,12 +35,10 @@ public:
   virtual void run() const = 0;
 };
 
-class VarDecl: public AST {
+class VarDecl: public Stmt {
 public:
     VarDecl(const std::string &s, DataType t): var(s), datatype(t) {}
-    void sem() override {
-        st.insertToStVariable(var, datatype);
-    }
+    
     void printOn(std::ostream &out) const override {
         out << "VarDecl(" << var << ": " << datatype << ")";
   }
@@ -50,12 +47,10 @@ private:
   DataType datatype;
 };
 
-class FunDecl: public AST {
+class FunDecl: public Stmt {
 public:
     FunDecl(const std::string &s, DataType t, std::vector<std::tuple<DataType, std::string>>  p): var(s), rettype(t), params(p) {}
-    void sem() override {
-        st.insertToStFunction(var, rettype, params);
-    }
+    
     void printOn(std::ostream &out) const override {
         out << "VarDecl(" << var << ": " << rettype << ")";
   }
@@ -275,15 +270,72 @@ public:
   void appendId(std::string id) {
     idlist.push_back(id);
   }
+  void printOn(std::ostream &out) const override {
+    out << "IdList(";
+    bool first = true;
+    for (const auto &id : idlist) {
+      if (!first) out << ", ";
+      first = false;
+      out << id;
+    }
+    out << ")";
+  }
 private:
   std::vector<std::string> idlist;
 };
 
 class FuncParamDef: public AST {
 public:
-  FuncParamDef(IdList *il, DataType t): idlist(il), paramtype(t) {}
-
+  FuncParamDef(IdList *il, Type *t, bool ref): idlist(il), paramtype(t), byRef(ref) {}
+  ~FuncParamDef() { delete idlist; delete paramtype; }
+  void printOn(std::ostream &out) const override {
+    out << "FuncParamDef(" << (byRef?"ref ":"") << *idlist << ": " << paramtype << ")";
+  }
 private:
   IdList *idlist;
-  DataType paramtype;
+  Type *paramtype;
+  bool byRef;
 };
+
+class ArrayDimension: public AST {
+public:
+  ArrayDimension(): dimensions() {}
+  ~ArrayDimension() { for (IntConst *d : dimensions) delete d; }
+  void append_dimension(IntConst * d) {
+    dimensions.push_back(d);
+  }
+  int getDimension() const {
+    return dimensions.size();
+  }
+  void printOn(std::ostream &out) const override {
+    out << "ArrayDimension(";
+    bool first = true;
+    for (const auto &d : dimensions) {
+      if (!first) out << ", ";
+      first = false;
+      out << *d;
+    }
+    out << ")";
+  }
+
+private:
+  std::vector<IntConst *> dimensions;
+};
+
+class Type: public AST {
+public:
+  Type(DataType t, ArrayDimension *d = nullptr, bool u): datatype(t), dim(d), unknownSize(u) {}
+  ~Type() { delete dim; }
+  void printOn(std::ostream &out) const override {
+    out << "Type(" << datatype;
+    if(unknownSize) out << "[]"; 
+    if (dim->getDimension() != 0) out << ", " << *dim;
+    out << ")";
+  }  
+
+private:
+  DataType datatype;
+  ArrayDimension *dim;
+  bool unknownSize;
+};
+

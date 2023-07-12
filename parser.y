@@ -90,8 +90,8 @@ func_param_def_list:
 ;
 
 func_param_def:
-  "ref" id_list ':' func_param_type 
-| id_list ':' func_param_type { $$ = new FuncParamDef($1, $3); }
+  "ref" id_list ':' func_param_type { $$ = new FuncParamDef($1, $3, true); }
+| id_list ':' func_param_type { $$ = new FuncParamDef($1, $3, false); }
 ;
 
 id_list:
@@ -105,12 +105,12 @@ data_type:
 ;
 
 type:
-  data_type array_dimension
+  data_type array_dimension { $$ = new Type($1, $2, false); }
 ;
 
 array_dimension:
-  /* nothing */
-| '[' T_int_const ']' array_dimension
+  /* nothing */ { $$ = new ArrayDimension(); }
+| '[' T_int_const ']' array_dimension { $4->append_dimension($2); $$ = $4; }
 ;
 
 ret_type:
@@ -119,8 +119,8 @@ ret_type:
 ;
 
 func_param_type:
-  type
-| data_type '[' ']' array_dimension
+  type { $$ = $1 }
+| data_type '[' ']' array_dimension { $$ = new Type($1, $4, true); }
 ;
 
 local_def:
