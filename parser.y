@@ -44,18 +44,22 @@ SymbolTable st;
     Stmt *stmt;
     Expr *expr;
     int num;
-    std::string *var;
+    std::string var;
     char op;
     char charval;
     std::string *stringval;
     DataType data_type;
+    IdList *idlist;
+    FuncParamDef *funparamdef;
 }
 
 %type<stmt>  stmt
 %type<expr>  expr cond
 %type<block> block stmt_list 
-%type<data_type> ret_type data_type
-%type<ast> program func_def local_def local_def_list header func_param_def func_param_def_list id_list func_call
+%type<data_type> ret_type data_type func_param_type
+%type<ast> program func_def local_def local_def_list header func_param_def func_param_def_list func_call
+%type<idlist> id_list
+%type<funparamdef> func_param_def 
 
 %%
 
@@ -76,23 +80,23 @@ local_def_list:
 ;
 
 header:
-  "fun" T_id '(' func_param_def_list ')' ':' ret_type
+  "fun" T_id '(' func_param_def_list ')' ':' ret_type {}
 | "fun" T_id '(' ')' ':' ret_type
 ;
 
 func_param_def_list:
-  func_param_def
-| func_param_def ';' func_param_def_list
+  func_param_def  { $$ = new FuncParamDefList($1); }
+| func_param_def ';' func_param_def_list { $3->append_func_param($1); $$ = $3; }
 ;
 
 func_param_def:
-  "ref" id_list ':' func_param_type
-| id_list ':' func_param_type
+  "ref" id_list ':' func_param_type 
+| id_list ':' func_param_type { $$ = new FuncParamDef($1, $3); }
 ;
 
 id_list:
-  T_id
-| T_id ',' id_list
+  T_id { $$ = new IdList($1); }
+| T_id ',' id_list { $3->appendId($1); $$ = $3; }
 ;
 
 data_type:

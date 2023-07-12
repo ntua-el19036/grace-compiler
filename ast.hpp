@@ -40,7 +40,7 @@ class VarDecl: public AST {
 public:
     VarDecl(const std::string &s, DataType t): var(s), datatype(t) {}
     void sem() override {
-        st.insert(var, datatype);
+        st.insertToStVariable(var, datatype);
     }
     void printOn(std::ostream &out) const override {
         out << "VarDecl(" << var << ": " << datatype << ")";
@@ -52,14 +52,17 @@ private:
 
 class FunDecl: public AST {
 public:
-    FunDecl(const std::string &s, DataType t): var(s), rettype(t) {}
+    FunDecl(const std::string &s, DataType t, std::vector<std::tuple<DataType, std::string>>  p): var(s), rettype(t), params(p) {}
     void sem() override {
-        st.insert(var, rettype);
-
+        st.insertToStFunction(var, rettype, params);
     }
+    void printOn(std::ostream &out) const override {
+        out << "VarDecl(" << var << ": " << rettype << ")";
+  }
 private:
   std::string var;
   DataType rettype;
+  std::vector<std::tuple<DataType, std::string>> params;
 };
 
 class IntConst: public Expr {
@@ -264,4 +267,23 @@ public:
     
 private:
     std::vector<Stmt *> stmt_list;
+};
+
+class IdList : public AST {
+public:
+  IdList(std::string i) { appendId(i); }
+  void appendId(std::string id) {
+    idlist.push_back(id);
+  }
+private:
+  std::vector<std::string> idlist;
+};
+
+class FuncParamDef: public AST {
+public:
+  FuncParamDef(IdList *il, DataType t): idlist(il), paramtype(t) {}
+
+private:
+  IdList *idlist;
+  DataType paramtype;
 };

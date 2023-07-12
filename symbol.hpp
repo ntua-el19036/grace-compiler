@@ -2,11 +2,13 @@
 #define __SYMBOL_HPP__
 
 #include <map>
+#include <vector>
+#include <tuple>
 
 extern void yyerror(const char *msg);
 
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
-enum EntryKind { FUNCTION, VARIABLE };
+enum EntryKind { FUNCTION, VARIABLE, PARAM};
 
 struct STEntry {
     DataType type;
@@ -14,10 +16,12 @@ struct STEntry {
     int param_count;
     std::vector<DataType> paramTypes;
     int offset;
+    bool byRef;
 
     STEntry() {}
-    STEntry(EntryKind k, DataType t, int o) : kind(k), type(t), offset(o) {}
-    STEntry(EntryKind k, DataType t, int o, std::vector<DataType> pt)
+    STEntry(EntryKind k, DataType t, int o) : kind(k), type(t), offset(o) {} //for variables
+    STEntry(EntryKind k, DataType t, int o, bool r) : kind(k), type(t), offset(o), byRef(r) {} //for params
+    STEntry(EntryKind k, DataType t, int o, std::vector<DataType> pt) //for function decls
       : kind(k), type(t), offset(o), param_count(pt.size()), paramTypes(pt) {}
 };
 
@@ -36,10 +40,21 @@ class Scope {
     locals[str] = STEntry(VARIABLE, t, offset++);
   }
 
-  void insertFunction(std::string str, DataType t, std::vector<DataType> pt) {
+  void insertFunction(std::string str, DataType t, std::vector<std::tuple<DataType, std::string>> pt) {
     if (locals.find(str) != locals.end())
       yyerror("Duplicate declaration");
-    locals[str] = STEntry(FUNCTION, t, offset++, pt);
+
+    std::vector<DataType> paramTypes;
+    for (const auto& tuple : pt) {
+      paramTypes.push_back(std::get<0>(tuple));  // Add the DataType field to paramTypes
+    }
+    locals[str] = STEntry(FUNCTION, t, offset++, paramTypes);
+  }
+
+  void insertParam(std::string str, DataType t, bool ref) {
+    if (locals.find(str) != locals.end())
+      yyerror("Duplicate declaration");
+    locals[str] = STEntry(PARAM, t, offset++, ref);
   }
 
   int get_offset() {
@@ -64,9 +79,16 @@ class SymbolTable {
   void insertToStVariable(std::string str, DataType t) {
     scopes.back().insertVariable(str, t);
   }
-  void insertToStFunction(std::string str, DataType t, std::vector<DataType> pt) {
+  void insertToStFunction(std::string str, DataType t, std::vector<std::tuple<DataType, std::string>> pt) {
     scopes.back().insertFunction(str, t, pt);
+
   }
+  void insertToStFunParam(std::string str, DataType t, std::vector<std::tuple<std::string, DataType>> pt) {
+    for(const auto& tuple :pt) {
+      scopes.back().insertParam(std::get<0>(tuple), std::get<1>(tuple), false);
+    }   
+  }
+  
   void push_scope() {
     int o = scopes.empty() ? 0 : scopes.back().get_offset();
     scopes.push_back(Scope(o));
