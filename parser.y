@@ -1,5 +1,6 @@
 %code requires{
     #include <string>
+    #include "ast.hpp"
     }
 
 %{
@@ -39,34 +40,36 @@ SymbolTable st;
 %nonassoc USIGN
 
 %union {
-    AST * ast;
-    Block *block;
-    Stmt *stmt;
-    Expr *expr;
-    int num;
-    std::string var;
-    char op;
-    char charval;
-    std::string *stringval;
-    DataType data_type;
-    IdList *idlist;
-    FuncParamDef *funparamdef;
+  AST * ast;
+  Block *block;
+  Stmt *stmt;
+  Expr *expr;
+  int num;
+  std::string var;
+  char op;
+  char charval;
+  std::string *stringval;
+  DataType data_type;
+  IdList *idlist;
+  FuncParamDef *funparamdef;
 }
 
 %type<stmt>  stmt
-%type<expr>  expr cond
+%type<expr>  expr cond expr_list
 %type<block> block stmt_list 
 %type<data_type> ret_type data_type func_param_type
-%type<ast> program func_def local_def local_def_list header func_param_def func_param_def_list func_call
+%type<ast> program func_def local_def local_def_list header func_param_def_list func_call type array_dimension var_def  l_value
 %type<idlist> id_list
 %type<funparamdef> func_param_def 
 
 %%
 
 program: 
-    func_def { 
+    func_param_def {std::cout << "AST: " << *$1 << std::endl;
+    /* func_def { 
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run(); 
+    } */
     }
 ;
 
@@ -90,7 +93,7 @@ func_param_def_list:
 ;
 
 func_param_def:
-  "ref" id_list ':' func_param_type { $$ = new FuncParamDef($1, $3, true); }
+  "ref" id_list ':' func_param_type { $$ = new FuncParamDef($2, $4, true); }
 | id_list ':' func_param_type { $$ = new FuncParamDef($1, $3, false); }
 ;
 
@@ -105,7 +108,7 @@ data_type:
 ;
 
 type:
-  data_type array_dimension { $$ = new Type($1, $2, false); }
+  data_type array_dimension { $$ = new Type($1, $2); }
 ;
 
 array_dimension:
@@ -134,7 +137,8 @@ func_decl:
 ;
 
 var_def:
-  "var" id_list ':' type ';' { $$ = new VarDecl($1)}
+  "var" id_list ':' type ';' { //$$ = new VarDecl($1);
+  }
 ;
 
 stmt:
@@ -190,7 +194,7 @@ expr:
 ;
 
 cond:
-  '(' cond ')' { $$ = $1; }
+  '(' cond ')' { $$ = $2; }
 | T_not cond { $$ = new Not($2); }
 | cond T_and cond { $$ = new Binop( $1, $2, $3 ); }
 | cond T_or cond { $$ = new Binop( $1, $2, $3 ); }

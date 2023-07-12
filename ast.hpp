@@ -52,7 +52,7 @@ public:
     FunDecl(const std::string &s, DataType t, std::vector<std::tuple<DataType, std::string>>  p): var(s), rettype(t), params(p) {}
     
     void printOn(std::ostream &out) const override {
-        out << "VarDecl(" << var << ": " << rettype << ")";
+        out << "FunDecl(" << var << ": " << rettype << ")";
   }
 private:
   std::string var;
@@ -241,29 +241,6 @@ private:
     Stmt *stmt;
 };
 
-class Block: public Stmt {
-public:
-    Block(): stmt_list() {}
-    ~Block() { for(Stmt *s : stmt_list) delete s; }
-    void append_stmt(Stmt *s) { stmt_list.push_back(s); }
-    void printOn(std::ostream &out) const override {
-        out << "Block(";
-        bool first = true;
-        for (const auto &s : stmt_list) {
-        if (!first) out << ", ";
-        first = false;
-        out << *s;
-        }
-        out << ")";
-    }
-    void run() const override {
-        for(Stmt *s : stmt_list) s->run();
-    }
-    
-private:
-    std::vector<Stmt *> stmt_list;
-};
-
 class IdList : public AST {
 public:
   IdList(std::string i) { appendId(i); }
@@ -284,18 +261,6 @@ private:
   std::vector<std::string> idlist;
 };
 
-class FuncParamDef: public AST {
-public:
-  FuncParamDef(IdList *il, Type *t, bool ref): idlist(il), paramtype(t), byRef(ref) {}
-  ~FuncParamDef() { delete idlist; delete paramtype; }
-  void printOn(std::ostream &out) const override {
-    out << "FuncParamDef(" << (byRef?"ref ":"") << *idlist << ": " << paramtype << ")";
-  }
-private:
-  IdList *idlist;
-  Type *paramtype;
-  bool byRef;
-};
 
 class ArrayDimension: public AST {
 public:
@@ -324,7 +289,7 @@ private:
 
 class Type: public AST {
 public:
-  Type(DataType t, ArrayDimension *d = nullptr, bool u): datatype(t), dim(d), unknownSize(u) {}
+  Type(DataType t, ArrayDimension *d = nullptr, bool u = false): datatype(t), dim(d), unknownSize(u) {}
   ~Type() { delete dim; }
   void printOn(std::ostream &out) const override {
     out << "Type(" << datatype;
@@ -337,5 +302,19 @@ private:
   DataType datatype;
   ArrayDimension *dim;
   bool unknownSize;
+};
+
+
+class FuncParamDef: public AST {
+public:
+  FuncParamDef(IdList *il, Type *t, bool ref): idlist(il), paramtype(t), byRef(ref) {}
+  ~FuncParamDef() { delete idlist; delete paramtype; }
+  void printOn(std::ostream &out) const override {
+    out << "FuncParamDef(" << (byRef?"ref ":"") << *idlist << ": " << *paramtype << ")";
+  }
+private:
+  IdList *idlist;
+  Type *paramtype;
+  bool byRef;
 };
 
