@@ -275,10 +275,10 @@ public:
   void printOn(std::ostream &out) const override {
     out << "ArrayDimension(";
     bool first = true;
-    for (const auto &d : dimensions) {
+    for(auto d=dimensions.crbegin(); d!=dimensions.crend(); ++d) {
       if (!first) out << ", ";
       first = false;
-      out << d;
+      out << *d;
     }
     out << ")";
   }
@@ -318,3 +318,24 @@ private:
   bool byRef;
 };
 
+class FuncParamDefList: public AST {
+public:
+  FuncParamDefList(FuncParamDef *d): paramlist(1,d) {}
+  ~FuncParamDefList() { for (FuncParamDef *d : paramlist) delete d; }
+  void append_func_param(FuncParamDef *d) {
+    paramlist.push_back(d);
+  }
+  void printOn(std::ostream &out) const override {
+    out << "FuncParamDefList(";
+    bool first = true;  
+    for (const auto &d : paramlist) {
+      if (!first) out << "; ";
+      first = false;
+      out << *d;
+    }
+    out << ")";
+  }
+
+private:
+  std::vector<FuncParamDef*> paramlist;
+};

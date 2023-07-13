@@ -1,1 +1,1 @@
-x,y : int[2][10]
+x,y : int[2][10]; x: char[][5]; ref a : int ; ref petros: int[][11][12]
