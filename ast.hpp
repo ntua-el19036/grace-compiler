@@ -339,3 +339,19 @@ public:
 private:
   std::vector<FuncParamDef*> paramlist;
 };
+
+class Header: public AST {
+public:
+  Header(std::string *i, DataType t, FuncParamDefList *p = nullptr): id(i), returntype(t), paramlist(p) {}
+  ~Header() { delete id; delete paramlist; }
+  void printOn(std::ostream &out) const override {
+    out << "Header(" << *id << ": " << returntype;
+    if (paramlist != nullptr) out << ", " << *paramlist;
+    out << ")";
+  }
+
+private:
+  std::string *id;
+  DataType returntype;
+  FuncParamDefList *paramlist;
+};

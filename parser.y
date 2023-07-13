@@ -55,6 +55,7 @@ SymbolTable st;
   ArrayDimension *dimension;
   FuncParamDef *paramdef;
   FuncParamDefList *paramlist;
+  Header *header;
 }
 
 %type<stmt>  stmt
@@ -63,15 +64,16 @@ SymbolTable st;
 %type<data_type> ret_type data_type 
 %type<type> func_param_type type
 %type<dimension> array_dimension
-%type<ast> program func_def local_def local_def_list header func_call var_def l_value
+%type<ast> program func_def local_def local_def_list func_call var_def l_value
 %type<idlist> id_list
 %type<paramlist> func_param_def_list
 %type<paramdef> func_param_def
+%type<header> header
 
 %%
 
 program: 
-    func_param_def_list {std::cout << "AST: " << *$1 << std::endl;
+    header {std::cout << "AST: " << *$1 << std::endl;
     /* func_def { 
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run(); 
@@ -89,8 +91,8 @@ local_def_list:
 ;
 
 header:
-  "fun" T_id '(' func_param_def_list ')' ':' ret_type {}
-| "fun" T_id '(' ')' ':' ret_type
+  "fun" T_id '(' func_param_def_list ')' ':' ret_type { $$ = new Header($2, $7, $4); }
+| "fun" T_id '(' ')' ':' ret_type { $$ = new Header($2, $6); }
 ;
 
 func_param_def_list:
