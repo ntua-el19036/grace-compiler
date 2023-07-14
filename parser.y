@@ -60,10 +60,9 @@ SymbolTable st;
   FunctionDefinition* t_function_definition;
 }
 
-%type<ast> program func_call
-
+%type<ast> program
 %type<stmt> stmt
-%type<expr> expr cond expr_list l_value
+%type<expr> expr cond expr_list l_value func_call
 %type<block> block stmt_list
 %type<data_type> ret_type data_type
 %type<t_variable_type> func_param_type
@@ -177,7 +176,7 @@ expr_list:
 ;
 
 func_call:
-  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3); }
+  T_id '(' expr_list ')' { $$ = new FunctionCall($1); }
 | T_id '(' ')' { $$ = new FunctionCall($1); }
 ;
 
@@ -192,9 +191,7 @@ expr:
 | T_char_const { $$ = new CharConst($1); }
 | l_value { $$ = $1; }
 | '(' expr ')' { $$ = $2; }
-/*
 | func_call { $$ = $1; }
-*/
 | '+' expr %prec USIGN { $$ = $2; }
 | '-' expr %prec USIGN { $$ = new Negative($2); }
 | expr '+' expr { $$ = new BinOp( $1, $2, $3 ); }

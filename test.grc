@@ -1,2 +1,1 @@
-adfa + "lol"[2 + 2]
-$1 + 2 * +3 - -2 mod 10 div 2 + 'a' + hey
+function()

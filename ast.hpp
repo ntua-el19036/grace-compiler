@@ -142,6 +142,25 @@ private:
   Expr* position;
 };
 
+
+class FunctionCall: public Expr {
+public:
+  FunctionCall(std::string *i): id(i) {}
+  ~FunctionCall() { delete id; }
+
+  void printOn(std::ostream &out) const override {
+    out << "FunctionCall(" << *id << ")";
+  }
+
+  // TODO: implement
+  virtual int eval() const override {
+    return 0;
+  }
+
+private:
+  std::string *id;
+};
+
 class Negative: public Expr {
 public:
     Negative(Expr *e): expr(e) {}
@@ -463,4 +482,3 @@ public:
 private:
   Header *header;
 };
-
