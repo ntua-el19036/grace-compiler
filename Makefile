@@ -1,5 +1,5 @@
 CXX=c++
-CXXFLAGS=-Wall
+CXXFLAGS=-Wall -std=c++14
 
 default: compiler
 
