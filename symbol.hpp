@@ -7,6 +7,7 @@
 
 extern void yyerror(const char *msg);
 
+enum PassingType { BY_VALUE, BY_REFERENCE };
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
 enum EntryKind { FUNCTION, VARIABLE, PARAM};
 
