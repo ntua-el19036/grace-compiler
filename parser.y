@@ -51,27 +51,29 @@ SymbolTable st;
   std::string *stringval;
   DataType data_type;
   ArrayDimension *dimension;
-  FuncParamType *funcParamType;
+  VariableType *t_variable_type;
   IdList* t_id_list;
   FuncParamList* t_func_param_list;
   Header *t_header;
+  LocalDefinitionList* t_local_definition_list;
 }
 
 %type<stmt>  stmt
 %type<expr>  expr cond expr_list
 %type<block> block stmt_list
 %type<data_type> ret_type data_type
-%type<funcParamType> func_param_type
+%type<t_variable_type> func_param_type
 %type<dimension> array_dimension
-%type<ast> program func_def local_def local_def_list func_call var_def l_value
+%type<ast> program func_def local_def_list func_call l_value
 %type<t_header> header
 %type<t_func_param_list> func_param_def func_param_def_list
 %type<t_id_list> id_list
+%type<t_local_definition_list> local_def var_def
 
 %%
 
 program:
-    header {std::cout << "AST: " << *$1 << std::endl;
+    var_def {std::cout << "AST: " << *$1 << std::endl;
     /* func_def {
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run();
@@ -124,8 +126,8 @@ ret_type:
 ;
 
 func_param_type:
-  data_type array_dimension { $$ = new FuncParamType($1, $2); }
-| data_type '[' ']' array_dimension { $4->missingFirstDimension = true; $$ = new FuncParamType($1, $4); }
+  data_type array_dimension { $$ = new VariableType($1, $2); }
+| data_type '[' ']' array_dimension { $4->missingFirstDimension = true; $$ = new VariableType($1, $4); }
 ;
 
 local_def:
@@ -139,7 +141,7 @@ func_decl:
 ;
 
 var_def:
-  "var" id_list ':' data_type array_dimension ';'
+  "var" id_list ':' data_type array_dimension ';' { $$ = new LocalDefinitionList(); $$->add_variable_definition_list($2, new VariableType($4,$5));}
 ;
 
 stmt:

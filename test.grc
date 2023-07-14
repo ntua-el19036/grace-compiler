@@ -1,3 +1,1 @@
-fun apostolos ( x,y : int[2][10]; x: char[][5]; ref a : int ; ref petros: int[][11][12]  ) : nothing
-$fun count (ref number : int) : int
-
+var asdf1, dio: int[2];

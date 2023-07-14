@@ -286,13 +286,13 @@ private:
   std::vector<int> dimensions;
 };
 
-class FuncParamType: public AST {
+class VariableType: public AST {
 public:
-  FuncParamType(DataType t, ArrayDimension *d): datatype(t), dim(d) {}
-  ~FuncParamType() { delete dim; }
+  VariableType(DataType t, ArrayDimension *d): datatype(t), dim(d) {}
+  ~VariableType() { delete dim; }
 
   void printOn(std::ostream &out) const override {
-    out << "FuncParamType(" << datatype << ", " << *dim << ")";
+    out << "VariableType(" << datatype << ", " << *dim << ")";
   }
 
 private:
@@ -303,7 +303,7 @@ private:
 
 class FuncParam: public AST {
 public:
-  FuncParam(std::string *il, FuncParamType *t, PassingType pt): id(il), param_type(t), passing_type(pt) {}
+  FuncParam(std::string *il, VariableType *t, PassingType pt): id(il), param_type(t), passing_type(pt) {}
   ~FuncParam() { delete id; delete param_type; }
 
   void printOn(std::ostream &out) const override {
@@ -312,7 +312,7 @@ public:
 
 private:
   std::string *id;
-  FuncParamType *param_type;
+  VariableType *param_type;
   PassingType passing_type;
 };
 
@@ -324,7 +324,7 @@ public:
     param_list.push_back(p);
   }
 
-  FuncParamList(IdList* il, FuncParamType* fpt, PassingType pt = PassingType::BY_VALUE) {
+  FuncParamList(IdList* il, VariableType* fpt, PassingType pt = PassingType::BY_VALUE) {
     for (const auto &id : il->id_list) {
       add_param(new FuncParam(id, fpt, pt));
     }
@@ -361,4 +361,47 @@ private:
   std::string *id;
   DataType returntype;
   FuncParamList *paramlist;
+};
+
+class LocalDefinition: public AST {
+public:
+  virtual void printOn(std::ostream &out) const = 0;
+};
+
+class VariableDefinition: public LocalDefinition {
+public:
+  VariableDefinition(std::string *i, VariableType *vt): id(i), variable_type(vt) {}
+  ~VariableDefinition() {delete id; delete variable_type; }
+  void printOn(std::ostream &out) const override {
+    out << "VariableDefinition(" << *id << ", " << *variable_type << ")";
+  }
+private:
+  std::string *id;
+  VariableType *variable_type;
+};
+
+class LocalDefinitionList: public AST {
+public:
+  void add_variable_definition_list(IdList *il, VariableType *vt) {
+    for (const auto &id : il->id_list) {
+      add_local_definition(new VariableDefinition(id, vt));
+    }
+  }
+
+  void add_local_definition(LocalDefinition *ld) {
+    local_definition_list.push_back(std::shared_ptr<LocalDefinition>(ld));
+  }
+
+  void printOn(std::ostream &out) const override {
+    out << "LocalDefinitionList(";
+    bool first = true;
+    for (const auto &ld : local_definition_list) {
+      if (!first) out << ", ";
+      first = false;
+      out << *ld;
+    }
+    out << ")";
+  }
+private:
+  std::vector<std::shared_ptr<LocalDefinition>> local_definition_list;
 };
