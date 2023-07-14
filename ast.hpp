@@ -90,31 +90,56 @@ private:
 
 class Id: public Expr {
 public:
-    Id(const std::string &s): var(s) {}
-    virtual void printOn(std::ostream &out) const override {
-    out << "Id(" << var << ")";
+  Id(std::string *s): var(s) {}
+
+  void printOn(std::ostream &out) const override {
+    out << "Id(" << *var << ")";
   }
+    // TODO: implement
   virtual int eval() const override {
-    return 0;//var;
+    return 0;
   }
 
 private:
-    std::string var;
+    std::string* var;
 };
 
 
 class StringLiteral: public Expr {
 public:
-    StringLiteral(const std::string &s): stringval(s) {}
-    virtual void printOn(std::ostream &out) const override {
-    out << "StringLiteral(" << stringval << ")";
+  StringLiteral(std::string *s): stringval(s) {}
+  ~StringLiteral() { delete stringval; }
+
+  void printOn(std::ostream &out) const override {
+    out << "StringLiteral(" << *stringval << ")";
   }
+
+  // TODO: implement
   virtual int eval() const override {
-    return 0; //stringval;
+    return 0;
   }
 
 private:
-    std::string stringval;
+    std::string* stringval;
+};
+
+class ArrayAccess: public Expr {
+public:
+  ArrayAccess(Expr* obj, Expr* pos): object(obj), position(pos) {}
+  ~ArrayAccess() { delete object; delete position; }
+
+  void printOn(std::ostream &out) const override {
+    out << "ArrayAccess(" << *object << ", " << *position << ")";
+  }
+
+  // TODO: implement
+  virtual int eval() const override {
+    return 0;
+  }
+
+private:
+  Expr* object;
+  Expr* position;
 };
 
 class Negative: public Expr {
@@ -137,9 +162,11 @@ class BinOp: public Expr {
 public:
     BinOp(Expr *l, char o, Expr *r): left(l), op(o), right(r) {}
     ~BinOp() { delete left; delete right; }
+
     virtual void printOn(std::ostream &out) const override {
         out << op << "(" << *left << ", " << *right << ")";
     }
+
     virtual int eval() const override {
         switch (op) {
             case '+': return left->eval() + right->eval();

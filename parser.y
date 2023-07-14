@@ -60,10 +60,10 @@ SymbolTable st;
   FunctionDefinition* t_function_definition;
 }
 
-%type<ast> program func_call l_value
+%type<ast> program func_call
 
 %type<stmt> stmt
-%type<expr> expr cond expr_list
+%type<expr> expr cond expr_list l_value
 %type<block> block stmt_list
 %type<data_type> ret_type data_type
 %type<t_variable_type> func_param_type
@@ -79,7 +79,7 @@ SymbolTable st;
 %%
 
 program:
-    local_def_list {std::cout << "AST: " << *$1 << std::endl;
+    expr {std::cout << "AST: " << *$1 << std::endl;
     /* func_def {
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run();
@@ -168,8 +168,7 @@ stmt_list:
 ;
 
 block:
-  /*'{' stmt_list '}' { $$ = $2; }*/
-  '{' '}'
+  '{' stmt_list '}' { $$ = $2; }
 ;
 
 expr_list:
@@ -185,7 +184,7 @@ func_call:
 l_value:
   T_id { $$ = new Id($1); }
 | T_string_literal { $$ = new StringLiteral($1); }
-| l_value '[' expr ']'
+| l_value '[' expr ']' { $$ = new ArrayAccess($1, $3); }
 ;
 
 expr:
