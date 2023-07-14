@@ -192,27 +192,29 @@ expr:
 | T_char_const { $$ = new CharConst($1); }
 | l_value { $$ = $1; }
 | '(' expr ')' { $$ = $2; }
+/*
 | func_call { $$ = $1; }
+*/
 | '+' expr %prec USIGN { $$ = $2; }
 | '-' expr %prec USIGN { $$ = new Negative($2); }
-| expr '+' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr '-' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr '*' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr T_div expr { $$ = new Binop( $1, $2, $3 ); }
-| expr T_mod expr { $$ = new Binop( $1, $2, $3 ); }
+| expr '+' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr '-' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr '*' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr T_div expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr T_mod expr { $$ = new BinOp( $1, $2, $3 ); }
 ;
 
 cond:
   '(' cond ')' { $$ = $2; }
 | T_not cond { $$ = new Not($2); }
-| cond T_and cond { $$ = new Binop( $1, $2, $3 ); }
-| cond T_or cond { $$ = new Binop( $1, $2, $3 ); }
-| expr '=' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr '#' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr '<' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr '>' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr T_lessorequal expr { $$ = new Binop( $1, $2, $3 ); }
-| expr T_greaterorequal expr { $$ = new Binop( $1, $2, $3 ); }
+| cond T_and cond { $$ = new BinOp( $1, $2, $3 ); }
+| cond T_or cond { $$ = new BinOp( $1, $2, $3 ); }
+| expr '=' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr '#' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr '<' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr '>' expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr T_lessorequal expr { $$ = new BinOp( $1, $2, $3 ); }
+| expr T_greaterorequal expr { $$ = new BinOp( $1, $2, $3 ); }
 ;
 
 
