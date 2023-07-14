@@ -382,6 +382,10 @@ private:
 
 class LocalDefinitionList: public AST {
 public:
+  std::vector<std::shared_ptr<LocalDefinition>> local_definition_list;
+
+  LocalDefinitionList(): local_definition_list() {}
+
   void add_variable_definition_list(IdList *il, VariableType *vt) {
     for (const auto &id : il->id_list) {
       add_local_definition(new VariableDefinition(id, vt));
@@ -390,6 +394,10 @@ public:
 
   void add_local_definition(LocalDefinition *ld) {
     local_definition_list.push_back(std::shared_ptr<LocalDefinition>(ld));
+  }
+
+  void join(LocalDefinitionList *other) {
+    local_definition_list.insert(local_definition_list.end(), other->local_definition_list.begin(), other->local_definition_list.end());
   }
 
   void printOn(std::ostream &out) const override {
@@ -402,6 +410,30 @@ public:
     }
     out << ")";
   }
-private:
-  std::vector<std::shared_ptr<LocalDefinition>> local_definition_list;
 };
+
+class FunctionDeclaration: public LocalDefinition {
+public:
+  FunctionDeclaration(Header *h): header(h) {}
+
+  void printOn(std::ostream &out) const override {
+    out << "FunctionDeclaration(" << *header << ")";
+  }
+
+private:
+  Header *header;
+};
+
+// TODO: Complete this class
+class FunctionDefinition: public LocalDefinition {
+public:
+  FunctionDefinition(Header *h): header(h) {}
+
+  void printOn(std::ostream &out) const override {
+    out << "FunctionDefinition(" << *header << ")";
+  }
+
+private:
+  Header *header;
+};
+

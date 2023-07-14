@@ -56,24 +56,30 @@ SymbolTable st;
   FuncParamList* t_func_param_list;
   Header *t_header;
   LocalDefinitionList* t_local_definition_list;
+  FunctionDeclaration* t_function_declaration;
+  FunctionDefinition* t_function_definition;
 }
 
-%type<stmt>  stmt
-%type<expr>  expr cond expr_list
+%type<ast> program func_call l_value
+
+%type<stmt> stmt
+%type<expr> expr cond expr_list
 %type<block> block stmt_list
 %type<data_type> ret_type data_type
 %type<t_variable_type> func_param_type
+
 %type<dimension> array_dimension
-%type<ast> program func_def local_def_list func_call l_value
 %type<t_header> header
 %type<t_func_param_list> func_param_def func_param_def_list
 %type<t_id_list> id_list
-%type<t_local_definition_list> local_def var_def
+%type<t_local_definition_list> local_def var_def local_def_list
+%type<t_function_declaration> func_decl
+%type<t_function_definition> func_def
 
 %%
 
 program:
-    var_def {std::cout << "AST: " << *$1 << std::endl;
+    local_def_list {std::cout << "AST: " << *$1 << std::endl;
     /* func_def {
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run();
@@ -82,12 +88,12 @@ program:
 ;
 
 func_def:
-    header local_def_list block
+    header local_def_list block { $$ = new FunctionDefinition($1);}
 ;
 
 local_def_list:
-  /* nothing */
-| local_def_list local_def
+  /* nothing */ { $$ = new LocalDefinitionList(); }
+| local_def_list local_def { $1->join($2); $$ = $1; }
 ;
 
 header:
@@ -131,13 +137,13 @@ func_param_type:
 ;
 
 local_def:
-  func_def
-| func_decl
-| var_def
+  func_def { $$ = new LocalDefinitionList(); $$->add_local_definition($1);}
+| func_decl { $$ = new LocalDefinitionList(); $$->add_local_definition($1);}
+| var_def { $$ = $1; }
 ;
 
 func_decl:
-  header ';'
+  header ';' { $$ = new FunctionDeclaration($1);}
 ;
 
 var_def:
@@ -162,7 +168,8 @@ stmt_list:
 ;
 
 block:
-  '{' stmt_list '}' { $$ = $2; }
+  /*'{' stmt_list '}' { $$ = $2; }*/
+  '{' '}'
 ;
 
 expr_list:

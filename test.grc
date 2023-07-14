@@ -1,1 +1,4 @@
-var asdf1, dio: int[2];
+var a, b, c: int[2];
+var v: char;
+fun count (ref number : int[][2]) : int;
+fun count (ref number : int[][2]) : int {}
