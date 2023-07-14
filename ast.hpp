@@ -241,16 +241,33 @@ private:
     Stmt *stmt;
 };
 
+class IdList : public AST {
+public:
+  std::vector<std::string*> id_list;
+  IdList(std::string *i) { append_id(i); }
+
+  void append_id(std::string *id) {
+    id_list.insert(id_list.begin(), id);
+  }
+
+  void printOn(std::ostream &out) const override {
+    out << "IdList(";
+    bool first = true;
+    for (const auto &id : id_list) {
+      if (!first) out << ", ";
+      first = false;
+      out << *id;
+    }
+    out << ")";
+  }
+};
+
 class ArrayDimension: public AST {
 public:
   bool missingFirstDimension;
 
   ArrayDimension(): missingFirstDimension(false), dimensions() {}
   // ~ArrayDimension() { for (IntConst *d : dimensions) delete d; }
-
-  int getDimensionCount() const {
-    return dimensions.size() + int(missingFirstDimension);
-  }
 
   void add_dimension(int d) {
     dimensions.insert(dimensions.begin(), d);
@@ -265,8 +282,8 @@ public:
     out << ")";
   }
 
-  private:
-    std::vector<int> dimensions;
+private:
+  std::vector<int> dimensions;
 };
 
 class FuncParamType: public AST {
@@ -297,27 +314,6 @@ private:
   std::string *id;
   FuncParamType *param_type;
   PassingType passing_type;
-};
-
-class IdList : public AST {
-public:
-  std::vector<std::string*> id_list;
-  IdList(std::string *i) { append_id(i); }
-
-  void append_id(std::string *id) {
-    id_list.insert(id_list.begin(), id);
-  }
-
-  void printOn(std::ostream &out) const override {
-    out << "IdList(";
-    bool first = true;
-    for (const auto &id : id_list) {
-      if (!first) out << ", ";
-      first = false;
-      out << *id;
-    }
-    out << ")";
-  }
 };
 
 class FuncParamList: public AST {
