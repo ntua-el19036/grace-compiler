@@ -38,7 +38,7 @@ public:
 class VarDecl: public Stmt {
 public:
     VarDecl(const std::string &s, DataType t): var(s), datatype(t) {}
-    
+
     void printOn(std::ostream &out) const override {
         out << "VarDecl(" << var << ": " << datatype << ")";
   }
@@ -50,7 +50,7 @@ private:
 class FunDecl: public Stmt {
 public:
     FunDecl(const std::string &s, DataType t, std::vector<std::tuple<DataType, std::string>>  p): var(s), rettype(t), params(p) {}
-    
+
     void printOn(std::ostream &out) const override {
         out << "FunDecl(" << var << ": " << rettype << ")";
   }
@@ -69,7 +69,7 @@ public:
   virtual int eval() const override {
     return num;
   }
-    
+
 private:
     int num;
 };
@@ -83,7 +83,7 @@ public:
   virtual int eval() const override {
     return charval;
   }
-    
+
 private:
     char charval;
 };
@@ -97,7 +97,7 @@ public:
   virtual int eval() const override {
     return 0;//var;
   }
-    
+
 private:
     std::string var;
 };
@@ -112,10 +112,10 @@ public:
   virtual int eval() const override {
     return 0; //stringval;
   }
-    
+
 private:
     std::string stringval;
-};    
+};
 
 class Negative: public Expr {
 public:
@@ -127,10 +127,10 @@ public:
   virtual int eval() const override {
     return -(expr->eval());
   }
-        
+
 private:
     Expr *expr;
-    
+
 };
 
 class BinOp: public Expr {
@@ -153,7 +153,7 @@ public:
             case '>' : return left->eval() > right->eval();
             case 'l' : return left->eval() <= right->eval();
             case 'g' : return left->eval() >= right->eval();
-            
+
             case '&' : return { !(left->eval()) ? false : right->eval() };
             case '|' : return { (left->eval()) ? true : right->eval() };
         }
@@ -175,7 +175,7 @@ public:
     virtual int eval() const override {
         return !(cond->eval());
     }
-    
+
 private:
         Expr *cond;
 };
@@ -198,7 +198,7 @@ public:
     void run() const override {
         for(Stmt *s : stmt_list) s->run();
     }
-    
+
 private:
     std::vector<Stmt *> stmt_list;
 };
@@ -218,7 +218,7 @@ public:
         else
             stmt2->run();
     }
-    
+
 private:
     Expr *cond;
     Stmt *stmt1;
@@ -243,42 +243,41 @@ private:
 
 class IdList : public AST {
 public:
-  IdList(std::string *i) { appendId(i); }
-  void appendId(std::string *id) {
-    idlist.push_back(id);
+  std::vector<std::string*> id_list;
+  IdList(std::string *i) { append_id(i); }
+
+  void append_id(std::string *id) {
+    id_list.insert(id_list.begin(), id);
   }
+
   void printOn(std::ostream &out) const override {
     out << "IdList(";
     bool first = true;
-    for (const auto &id : idlist) {
+    for (const auto &id : id_list) {
       if (!first) out << ", ";
       first = false;
       out << *id;
     }
     out << ")";
   }
-private:
-  std::vector<std::string*> idlist;
 };
-
 
 class ArrayDimension: public AST {
 public:
-  ArrayDimension(): dimensions() {}
+  bool missingFirstDimension;
+
+  ArrayDimension(): missingFirstDimension(false), dimensions() {}
   // ~ArrayDimension() { for (IntConst *d : dimensions) delete d; }
-  void append_dimension(int d) {
-    dimensions.push_back(d);
+
+  void add_dimension(int d) {
+    dimensions.insert(dimensions.begin(), d);
   }
-  int getDimension() const {
-    return dimensions.size();
-  }
+
   void printOn(std::ostream &out) const override {
     out << "ArrayDimension(";
-    bool first = true;
-    for(auto d=dimensions.crbegin(); d!=dimensions.crend(); ++d) {
-      if (!first) out << ", ";
-      first = false;
-      out << *d;
+    if (missingFirstDimension) out << "[]";
+    for (const auto &d : dimensions) {
+      out << "[" << d << "]";
     }
     out << ")";
   }
@@ -287,62 +286,70 @@ private:
   std::vector<int> dimensions;
 };
 
-class Type: public AST {
+class FuncParamType: public AST {
 public:
-  Type(DataType t, ArrayDimension *d = nullptr, bool u = false): datatype(t), dim(d), unknownSize(u) {}
-  ~Type() { delete dim; }
+  FuncParamType(DataType t, ArrayDimension *d): datatype(t), dim(d) {}
+  ~FuncParamType() { delete dim; }
+
   void printOn(std::ostream &out) const override {
-    out << "Type(" << datatype;
-    if(unknownSize) out << "[]"; 
-    if (dim->getDimension() != 0) out << ", " << *dim;
-    out << ")";
-  }  
+    out << "FuncParamType(" << datatype << ", " << *dim << ")";
+  }
 
 private:
   DataType datatype;
   ArrayDimension *dim;
-  bool unknownSize;
 };
 
 
-class FuncParamDef: public AST {
+class FuncParam: public AST {
 public:
-  FuncParamDef(IdList *il, Type *t, bool ref): idlist(il), paramtype(t), byRef(ref) {}
-  ~FuncParamDef() { delete idlist; delete paramtype; }
+  FuncParam(std::string *il, FuncParamType *t, PassingType pt): id(il), param_type(t), passing_type(pt) {}
+  ~FuncParam() { delete id; delete param_type; }
+
   void printOn(std::ostream &out) const override {
-    out << "FuncParamDef(" << (byRef?"ref ":"") << *idlist << ": " << *paramtype << ")";
+    out << "FuncParam(" << (bool(passing_type) ? "reference, ":"value, ") << *id << ", " << *param_type << ")";
   }
+
 private:
-  IdList *idlist;
-  Type *paramtype;
-  bool byRef;
+  std::string *id;
+  FuncParamType *param_type;
+  PassingType passing_type;
 };
 
-class FuncParamDefList: public AST {
+class FuncParamList: public AST {
 public:
-  FuncParamDefList(FuncParamDef *d): paramlist(1,d) {}
-  ~FuncParamDefList() { for (FuncParamDef *d : paramlist) delete d; }
-  void append_func_param(FuncParamDef *d) {
-    paramlist.push_back(d);
+  std::vector<FuncParam*> param_list;
+
+  void add_param(FuncParam *p) {
+    param_list.push_back(p);
   }
+
+  FuncParamList(IdList* il, FuncParamType* fpt, PassingType pt = PassingType::BY_VALUE) {
+    for (const auto &id : il->id_list) {
+      add_param(new FuncParam(id, fpt, pt));
+    }
+  }
+  // ~FuncParamList() {}
+
+  void join(FuncParamList *other) {
+    param_list.insert(param_list.end(), other->param_list.begin(), other->param_list.end());
+  }
+
   void printOn(std::ostream &out) const override {
-    out << "FuncParamDefList(";
-    bool first = true;  
-    for (const auto &d : paramlist) {
-      if (!first) out << "; ";
+    out << "FuncParamList(";
+    bool first = true;
+    for (const auto &p : param_list) {
+      if (!first) out << ", ";
       first = false;
-      out << *d;
+      out << *p;
     }
     out << ")";
   }
-
-private:
-  std::vector<FuncParamDef*> paramlist;
 };
 
 class Header: public AST {
 public:
-  Header(std::string *i, DataType t, FuncParamDefList *p = nullptr): id(i), returntype(t), paramlist(p) {}
+  Header(std::string *i, DataType t, FuncParamList *p = nullptr): id(i), returntype(t), paramlist(p) {}
   ~Header() { delete id; delete paramlist; }
   void printOn(std::ostream &out) const override {
     out << "Header(" << *id << ": " << returntype;
@@ -353,5 +360,5 @@ public:
 private:
   std::string *id;
   DataType returntype;
-  FuncParamDefList *paramlist;
+  FuncParamList *paramlist;
 };

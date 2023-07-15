@@ -50,38 +50,36 @@ SymbolTable st;
   char charval;
   std::string *stringval;
   DataType data_type;
-  IdList *idlist;
-  Type *type;
   ArrayDimension *dimension;
-  FuncParamDef *paramdef;
-  FuncParamDefList *paramlist;
-  Header *header;
+  FuncParamType *funcParamType;
+  IdList* t_id_list;
+  FuncParamList* t_func_param_list;
+  Header *t_header;
 }
 
 %type<stmt>  stmt
 %type<expr>  expr cond expr_list
-%type<block> block stmt_list 
-%type<data_type> ret_type data_type 
-%type<type> func_param_type type
+%type<block> block stmt_list
+%type<data_type> ret_type data_type
+%type<funcParamType> func_param_type
 %type<dimension> array_dimension
 %type<ast> program func_def local_def local_def_list func_call var_def l_value
-%type<idlist> id_list
-%type<paramlist> func_param_def_list
-%type<paramdef> func_param_def
-%type<header> header
+%type<t_header> header
+%type<t_func_param_list> func_param_def func_param_def_list
+%type<t_id_list> id_list
 
 %%
 
-program: 
+program:
     header {std::cout << "AST: " << *$1 << std::endl;
-    /* func_def { 
+    /* func_def {
         std::cout << "AST: " << *$1 << std::endl;
-    //     $1->run(); 
+    //     $1->run();
     } */
     }
 ;
 
-func_def: 
+func_def:
     header local_def_list block
 ;
 
@@ -96,18 +94,18 @@ header:
 ;
 
 func_param_def_list:
-  func_param_def  { $$ = new FuncParamDefList($1); }
-| func_param_def_list ';' func_param_def { $1->append_func_param($3); $$ = $1; }
+  func_param_def  { $$ = $1; }
+| func_param_def ';' func_param_def_list { $1->join($3); $$ = $1; }
 ;
 
 func_param_def:
-  "ref" id_list ':' func_param_type { $$ = new FuncParamDef($2, $4, true); }
-| id_list ':' func_param_type { $$ = new FuncParamDef($1, $3, false); }
+  "ref" id_list ':' func_param_type { $$ = new FuncParamList($2, $4, PassingType::BY_REFERENCE); }
+| id_list ':' func_param_type { $$ = new FuncParamList($1, $3); }
 ;
 
 id_list:
   T_id { $$ = new IdList($1); }
-| T_id ',' id_list { $3->appendId($1); $$ = $3; }
+| T_id ',' id_list { $3->append_id($1); $$ = $3; }
 ;
 
 data_type:
@@ -115,13 +113,9 @@ data_type:
 | "char" { $$ = TYPE_char; }
 ;
 
-type:
-  data_type array_dimension { $$ = new Type($1, $2); }
-;
-
 array_dimension:
   /* nothing */ { $$ = new ArrayDimension(); }
-| '[' T_int_const ']' array_dimension { $4->append_dimension($2); $$ = $4; }
+| '[' T_int_const ']' array_dimension { $4->add_dimension($2); $$ = $4; }
 ;
 
 ret_type:
@@ -130,8 +124,8 @@ ret_type:
 ;
 
 func_param_type:
-  type { $$ = $1; }
-| data_type '[' ']' array_dimension { $$ = new Type($1, $4, true); }
+  data_type array_dimension { $$ = new FuncParamType($1, $2); }
+| data_type '[' ']' array_dimension { $4->missingFirstDimension = true; $$ = new FuncParamType($1, $4); }
 ;
 
 local_def:
@@ -145,8 +139,7 @@ func_decl:
 ;
 
 var_def:
-  "var" id_list ':' type ';' { //$$ = new VarDecl($1);
-  }
+  "var" id_list ':' data_type array_dimension ';'
 ;
 
 stmt:
@@ -157,7 +150,7 @@ stmt:
 | "if" cond T_then stmt { $$ = new If($2, $4); }
 | "if" cond T_then stmt T_else stmt { $$ = new If($2, $4, $6); }
 | "while" cond "do" stmt { $$ = new While($2, $4); }
-| "return" ';' 
+| "return" ';'
 | "return" expr ';'
 ;
 
@@ -197,7 +190,7 @@ expr:
 | expr '+' expr { $$ = new Binop( $1, $2, $3 ); }
 | expr '-' expr { $$ = new Binop( $1, $2, $3 ); }
 | expr '*' expr { $$ = new Binop( $1, $2, $3 ); }
-| expr T_div expr { $$ = new Binop( $1, $2, $3 ); } 
+| expr T_div expr { $$ = new Binop( $1, $2, $3 ); }
 | expr T_mod expr { $$ = new Binop( $1, $2, $3 ); }
 ;
 
