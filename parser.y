@@ -58,11 +58,13 @@ SymbolTable st;
   LocalDefinitionList* t_local_definition_list;
   FunctionDeclaration* t_function_declaration;
   FunctionDefinition* t_function_definition;
+  ExpressionList *t_expression_list;
 }
 
 %type<ast> program
 %type<stmt> stmt
-%type<expr> expr cond expr_list l_value func_call
+%type<expr> expr cond l_value func_call
+%type<t_expression_list> expr_list
 %type<block> block stmt_list
 %type<data_type> ret_type data_type
 %type<t_variable_type> func_param_type
@@ -78,7 +80,7 @@ SymbolTable st;
 %%
 
 program:
-    expr {std::cout << "AST: " << *$1 << std::endl;
+    func_call {std::cout << "AST: " << *$1 << std::endl;
     /* func_def {
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run();
@@ -171,12 +173,12 @@ block:
 ;
 
 expr_list:
-  expr
-| expr ',' expr_list
+  expr { $$ = new ExpressionList($1); }
+| expr ',' expr_list { $3->add_expression($1); $$ = $3; }
 ;
 
 func_call:
-  T_id '(' expr_list ')' { $$ = new FunctionCall($1); }
+  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3); }
 | T_id '(' ')' { $$ = new FunctionCall($1); }
 ;
 

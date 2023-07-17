@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include "symbol.hpp"
+#include <memory>
 
 class AST {
 public:
@@ -142,14 +143,41 @@ private:
   Expr* position;
 };
 
+class ExpressionList: public Expr {
+public:
+  std::vector<Expr*> expressions;
+
+  ExpressionList(Expr *e): expressions() {expressions.push_back(e); }
+  ~ExpressionList() { for (Expr *e: expressions ) delete e; }
+
+  void add_expression(Expr *e) { expressions.insert(expressions.begin(), e); }
+  void printOn(std::ostream &out) const override {
+      out << "Expression List(";
+      bool first = true;
+      for (const auto &e : expressions) {
+      if (!first) out << ", ";
+      first = false;
+      out << *e;
+      }
+      out << ")";
+  }
+
+  // TODO: implement
+  virtual int eval() const override {
+    return 0;
+  }
+};
 
 class FunctionCall: public Expr {
 public:
-  FunctionCall(std::string *i): id(i) {}
+  FunctionCall(std::string *i, ExpressionList* el = nullptr): id(i), args(el) {}
   ~FunctionCall() { delete id; }
 
   void printOn(std::ostream &out) const override {
-    out << "FunctionCall(" << *id << ")";
+    out << "FunctionCall(" << *id ;
+    if(args != nullptr)
+        out << ", " << *args ;
+    out << ")";
   }
 
   // TODO: implement
@@ -159,6 +187,7 @@ public:
 
 private:
   std::string *id;
+  ExpressionList *args;
 };
 
 class Negative: public Expr {
