@@ -551,12 +551,17 @@ private:
 // TODO: Complete this class
 class FunctionDefinition: public LocalDefinition {
 public:
-  FunctionDefinition(Header *h): header(h) {}
+  FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b): header(h), definition_list(d), block(b) {}
+  ~FunctionDefinition() { delete header; delete definition_list; delete block; }
 
   void printOn(std::ostream &out) const override {
-    out << "FunctionDefinition(" << *header << ")";
+    out << "FunctionDefinition(" << *header << 
+      ", " << *definition_list << 
+      ", " << *block << ")";
   }
 
 private:
   Header *header;
+  LocalDefinitionList *definition_list;
+  Block *block;
 };

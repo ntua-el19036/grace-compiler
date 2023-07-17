@@ -80,16 +80,11 @@ SymbolTable st;
 %%
 
 program:
-    stmt {std::cout << "AST: " << *$1 << std::endl;
-    /* func_def {
-        std::cout << "AST: " << *$1 << std::endl;
-    //     $1->run();
-    } */
-    }
+  func_def { std::cout << "AST: " << *$1 << std::endl; }
 ;
 
 func_def:
-    header local_def_list block { $$ = new FunctionDefinition($1);}
+  header local_def_list block { $$ = new FunctionDefinition($1,$2,$3);}
 ;
 
 local_def_list:
