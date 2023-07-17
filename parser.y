@@ -62,7 +62,7 @@ SymbolTable st;
 }
 
 %type<ast> program
-%type<stmt> stmt
+%type<stmt> stmt func_call_stmt
 %type<expr> expr cond l_value func_call
 %type<t_expression_list> expr_list
 %type<block> block stmt_list
@@ -80,7 +80,7 @@ SymbolTable st;
 %%
 
 program:
-    func_call {std::cout << "AST: " << *$1 << std::endl;
+    stmt {std::cout << "AST: " << *$1 << std::endl;
     /* func_def {
         std::cout << "AST: " << *$1 << std::endl;
     //     $1->run();
@@ -153,14 +153,14 @@ var_def:
 
 stmt:
   ';' { $$ = new EmptyStmt(); }
-| l_value "<-" expr ';'
+| l_value "<-" expr ';' { $$ = new Assignment($1, $3); }
 | block { $$ = $1; }
-| func_call ';' { $$ = $1; }
+| func_call_stmt ';' { $$ = $1; }
 | "if" cond T_then stmt { $$ = new If($2, $4); }
 | "if" cond T_then stmt T_else stmt { $$ = new If($2, $4, $6); }
 | "while" cond "do" stmt { $$ = new While($2, $4); }
-| "return" ';'
-| "return" expr ';'
+| "return" ';' { $$ = new Return(); }
+| "return" expr ';' { $$ = new Return($2); }
 ;
 
 stmt_list:
@@ -182,6 +182,11 @@ func_call:
 | T_id '(' ')' { $$ = new FunctionCall($1); }
 ;
 
+func_call_stmt:
+  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3); }
+| T_id '(' ')' { $$ = new FunctionCall($1); }
+;
+
 l_value:
   T_id { $$ = new Id($1); }
 | T_string_literal { $$ = new StringLiteral($1); }
@@ -195,7 +200,7 @@ expr:
 | '(' expr ')' { $$ = $2; }
 | func_call { $$ = $1; }
 | '+' expr %prec USIGN { $$ = $2; }
-| '-' expr %prec USIGN { $$ = new Negative($2); }
+| '-' expr %prec USIGN { $$ = new Negative($2); } 
 | expr '+' expr { $$ = new BinOp( $1, $2, $3 ); }
 | expr '-' expr { $$ = new BinOp( $1, $2, $3 ); }
 | expr '*' expr { $$ = new BinOp( $1, $2, $3 ); }

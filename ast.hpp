@@ -152,7 +152,7 @@ public:
 
   void add_expression(Expr *e) { expressions.insert(expressions.begin(), e); }
   void printOn(std::ostream &out) const override {
-      out << "Expression List(";
+      out << "ExpressionList(";
       bool first = true;
       for (const auto &e : expressions) {
       if (!first) out << ", ";
@@ -168,10 +168,10 @@ public:
   }
 };
 
-class FunctionCall: public Expr {
+class FunctionCall: public Expr, public Stmt {
 public:
   FunctionCall(std::string *i, ExpressionList* el = nullptr): id(i), args(el) {}
-  ~FunctionCall() { delete id; }
+  ~FunctionCall() { delete id; delete args;}
 
   void printOn(std::ostream &out) const override {
     out << "FunctionCall(" << *id ;
@@ -183,6 +183,11 @@ public:
   // TODO: implement
   virtual int eval() const override {
     return 0;
+  }
+
+  // TODO: implement
+  virtual void run() const override {
+    return ;
   }
 
 private:
@@ -302,18 +307,62 @@ private:
 
 class While: public Stmt {
 public:
-    While(Expr *c, Stmt *s): cond(c), stmt(s) {}
-    ~While() { delete cond; delete stmt; }
-    void printOn(std::ostream &out) const override {
-        out << "While(" << *cond << " do " << *stmt; out << ")";
-    }
-    void run() const override {
-        while(cond->eval()) stmt->run();
-    }
+  While(Expr *c, Stmt *s): cond(c), stmt(s) {}
+  ~While() { delete cond; delete stmt; }
+  void printOn(std::ostream &out) const override {
+    out << "While(" << *cond << " do " << *stmt; out << ")";
+  }
+  void run() const override {
+    while(cond->eval()) stmt->run();
+  }
 
 private:
     Expr *cond;
     Stmt *stmt;
+};
+
+class EmptyStmt: public Stmt {
+public:
+  EmptyStmt() {}
+  void printOn(std::ostream &out) const override {
+    out << "EmptyStmt()";
+  }
+  void run() const override {}
+};
+
+class Assignment: public Stmt {
+public:
+  Assignment(Expr *l, Expr *e): l_value(l), expr(e) {}
+  ~Assignment() { delete l_value; delete expr; }
+  void printOn(std::ostream &out) const override {
+    out << "Assignment(" << *l_value << ", " << *expr << ")";
+  }
+
+    // TODO: implement
+  void run() const override {
+  }
+
+private:
+  Expr *l_value;
+  Expr *expr;
+};
+
+class Return: public Stmt {
+public:
+  Return(Expr *e = nullptr): expr(e) {}
+  ~Return() { delete expr; }
+
+  // TODO: implement
+  void run() const override {
+  }
+
+  void printOn(std::ostream &out) const override {
+    out << "Return(";
+    if(expr != nullptr) out << *expr;      
+    out << ")";
+  }
+private:
+Expr *expr;
 };
 
 class IdList : public AST {
