@@ -1,0 +1,14 @@
+fun main () : nothing
+
+    var height, width, perimeter : int;
+
+{   $ main
+    writeString("Please, give me the width of the rectangle:\n");
+    width <- readInteger();
+    writeString("Please, give me the height of the rectangle:\n");
+    height <- readInteger();
+    perimeter <- width * height;
+    writeString("The perimeter is: \n\n");
+    writeInteger(perimeter);
+    return;
+}

@@ -1,0 +1,13 @@
+fun main () : nothing
+
+    var minutes, hours : int;
+{
+    writeString("Please, give me the number of minutes:\n");
+    minutes <- readInteger();
+    hours <- minutes div 60;
+    minutes <- minutes mod 60;
+    writeInteger(hours);
+    writeString(" Hours, ");
+    writeInteger(minutes);
+    writeString(" Minutes.\n");
+}

@@ -1,0 +1,24 @@
+fun main () : nothing
+
+    var input : char[7];
+    var number1, number2, number3 : int;
+
+{
+    writeString("Give me 3 one-digit numbers separared by a comma:\n");
+    readString(7, input);
+    if((input[1] # ',') or (input[3] # ',') 
+        or (input[5] # ',') or  (input[6] # '\0')) then 
+    {
+        writeString("Follow the instructions next time!\n");
+        return;
+    }
+    else
+    {
+        number1 <- ascii(input[0]);
+        number2 <- ascii(input[2]);
+        number3 <- ascii(input[4]);
+        writeString("The sum of your numbers is: \n");
+        writeInteger(number1+number2+number3);
+    }
+
+}
