@@ -80,7 +80,7 @@ SymbolTable st;
 %%
 
 program:
-  func_def { std::cout << "AST: " << *$1 << std::endl; }
+  func_def { std::cout << "AST: " << *$1 << std::endl; delete $1;}
 ;
 
 func_def:

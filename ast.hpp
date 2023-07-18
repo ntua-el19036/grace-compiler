@@ -247,62 +247,62 @@ private:
 
 class Not: public Expr {
 public:
-    Not(Expr *c): cond(c) {}
-    ~Not() { delete cond; }
-    virtual void printOn(std::ostream &out) const override {
-        out << "Not" << "(" << *cond << ")";
-    }
-    virtual int eval() const override {
-        return !(cond->eval());
-    }
+  Not(Expr *c): cond(c) {}
+  ~Not() { delete cond; }
+  virtual void printOn(std::ostream &out) const override {
+      out << "Not" << "(" << *cond << ")";
+  }
+  virtual int eval() const override {
+      return !(cond->eval());
+  }
 
 private:
-        Expr *cond;
+  Expr *cond;
 };
 
 class Block: public Stmt {
 public:
-    Block(): stmt_list() {}
-    ~Block() { for(Stmt *s : stmt_list) delete s; }
-    void append_stmt(Stmt *s) { stmt_list.push_back(s); }
-    void printOn(std::ostream &out) const override {
-        out << "Block(";
-        bool first = true;
-        for (const auto &s : stmt_list) {
-        if (!first) out << ", ";
-        first = false;
-        out << *s;
-        }
-        out << ")";
-    }
-    void run() const override {
-        for(Stmt *s : stmt_list) s->run();
-    }
+  Block(): stmt_list() {}
+  ~Block() { for(Stmt *s : stmt_list) delete s; }
+  void append_stmt(Stmt *s) { stmt_list.push_back(s); }
+  void printOn(std::ostream &out) const override {
+      out << "Block(";
+      bool first = true;
+      for (const auto &s : stmt_list) {
+      if (!first) out << ", ";
+      first = false;
+      out << *s;
+      }
+      out << ")";
+  }
+  void run() const override {
+      for(Stmt *s : stmt_list) s->run();
+  }
 
 private:
-    std::vector<Stmt *> stmt_list;
+  std::vector<Stmt *> stmt_list;
 };
 
 class If: public Stmt {
 public:
-    If(Expr *c, Stmt *s1, Stmt *s2 = nullptr): cond(c), stmt1(s1), stmt2(s2) {}
-    ~If() { delete cond; delete stmt1; delete stmt2; }
-    void printOn(std::ostream &out) const override {
-        out << "If(" << *cond << ", " << *stmt1;
-        if (stmt2 != nullptr) out << ", " << *stmt2;
-        out << ")";
-    }
-    void run() const override {
-        if(cond->eval())
-            stmt1->run();
-        else
-            stmt2->run();
-    }
+  If(Expr *c, Stmt *s1, Stmt *s2 = nullptr): cond(c), stmt1(s1), stmt2(s2) {}
+  ~If() { delete cond; delete stmt1; delete stmt2; }
+  void printOn(std::ostream &out) const override {
+      out << "If(" << *cond << ", " << *stmt1;
+      if (stmt2 != nullptr) out << ", " << *stmt2;
+      out << ")";
+  }
+  void run() const override {
+      if(cond->eval())
+          stmt1->run();
+      else
+          stmt2->run();
+  }
 
 private:
-    Expr *cond;
-    Stmt *stmt1;
-    Stmt *stmt2;
+  Expr *cond;
+  Stmt *stmt1;
+  Stmt *stmt2;
 };
 
 class While: public Stmt {
@@ -369,6 +369,7 @@ class IdList : public AST {
 public:
   std::vector<std::string*> id_list;
   IdList(std::string *i) { append_id(i); }
+  ~IdList() { for (std::string *id : id_list) delete id; }
 
   void append_id(std::string *id) {
     id_list.insert(id_list.begin(), id);
@@ -453,7 +454,7 @@ public:
       add_param(new FuncParam(id, fpt, pt));
     }
   }
-  // ~FuncParamList() {}
+  ~FuncParamList() { for (FuncParam *p : param_list) delete p;}
 
   void join(FuncParamList *other) {
     param_list.insert(param_list.end(), other->param_list.begin(), other->param_list.end());
@@ -539,6 +540,7 @@ public:
 class FunctionDeclaration: public LocalDefinition {
 public:
   FunctionDeclaration(Header *h): header(h) {}
+  ~FunctionDeclaration() { delete header; }
 
   void printOn(std::ostream &out) const override {
     out << "FunctionDeclaration(" << *header << ")";
@@ -548,7 +550,6 @@ private:
   Header *header;
 };
 
-// TODO: Complete this class
 class FunctionDefinition: public LocalDefinition {
 public:
   FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b): header(h), definition_list(d), block(b) {}
