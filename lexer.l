@@ -61,7 +61,7 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "Error at line %d:\n%s\n", msg);
+    fprintf(stderr, "Error at line %d:\n%s\n", yylineno, msg);
     exit(1);
 }
 
