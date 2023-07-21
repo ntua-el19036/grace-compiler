@@ -10,6 +10,8 @@
 #include "parser.hpp"
 %}
 
+%option yylineno
+
 L [a-zA-Z]
 D [0-9]
 W [ \t\n\r]
@@ -54,13 +56,12 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 \$[^\$].*\n { /* single line comment - nothing */ }
 \$\$([^\$]+|\$[^\$])*\$\$ { /* multiple line comment - nothing */ }
 
-. { fprintf(stderr, "Illegal character %s", yytext);
-  exit(1); }
+. { yyerror("Illegal character"); }
 
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "%s\n", msg);
+    fprintf(stderr, "Error at line %d:\n%s\n", msg);
     exit(1);
 }
 
