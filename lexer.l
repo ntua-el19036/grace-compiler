@@ -1,11 +1,16 @@
 %option noyywrap
 
+
+
 %{
+#include <string>
 #include <cstdio>
 #include <cstdlib>
 #include "lexer.hpp"
 #include "parser.hpp"
 %}
+
+%option yylineno
 
 L [a-zA-Z]
 D [0-9]
@@ -17,46 +22,46 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 %%
 
 
-"and" { return T_and; }
+"and" { yylval.op = '&'; return T_and; }
 "int" { return T_int; }
 "then" { return T_then; }
 "char" { return T_char; }
-"mod" { return T_mod; }
+"mod" { yylval.op = '%'; return T_mod; }
 "var" { return T_var; }
-"div" { return T_div; }
+"div" { yylval.op = '/'; return T_div; }
 "not" { return T_not; }
 "while" { return T_while; }
 "do" { return T_do; }
 "nothing" { return T_nothing; }
 "else" { return T_else; }
-"or" { return T_or; }
+"or" { yylval.op = '|'; return T_or; }
 "fun" { return T_fun; }
 "ref" { return T_ref; }
 "if" { return T_if; }
 "return" { return T_return; }
 
-{L}({L}|{D}|\_)* { return T_id; }
-{D}+ { return T_int_const; }
-\'({COMMONCHAR}|({ESCAPESEQ})|({HEX}))\' {  return T_char_const; }
-\"({COMMONCHAR}|({ESCAPESEQ})|({HEX}))*\" { /* not sure */ return T_string_literal; }
+{L}({L}|{D}|\_)* { yylval.var = new std::string(yytext); return T_id; }
+{D}+ { yylval.num = atoi(yytext); return T_int_const; }
+\'({COMMONCHAR}|({ESCAPESEQ})|({HEX}))\' { yylval.charval = yytext[1]; return T_char_const; }
+\"({COMMONCHAR}|({ESCAPESEQ})|({HEX}))*\" { yylval.stringval = new std::string(yytext+1,yyleng-2);
+/* not sure */ return T_string_literal; }
 
-"<=" { return T_lessorequal; }
-">=" { return T_greaterorequal; }
+"<=" { yylval.op = 'l'; return T_lessorequal; }
+">=" { yylval.op = 'g'; return T_greaterorequal; }
 "<-" { return T_assign; }
 
-[\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { return yytext[0]; }
+[\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { yylval.op = yytext[0]; return yytext[0]; }
 
 {W}+ { /* nothing */ }
 \$[^\$].*\n { /* single line comment - nothing */ }
 \$\$([^\$]+|\$[^\$])*\$\$ { /* multiple line comment - nothing */ }
 
-. { fprintf(stderr, "Illegal character %s", yytext);
-  exit(1); }
+. { yyerror("Illegal character"); }
 
 %%
 
 void yyerror(const char* msg) {
-    fprintf(stderr, "%s\n", msg);
+    fprintf(stderr, "Error at line %d:\n%s\n", msg);
     exit(1);
 }
 

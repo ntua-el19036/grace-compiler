@@ -5,3 +5,15 @@
 * make lexer to make the lexer
 * make clean to reset
 * ./lexer to use the lexer
+
+---
+
+## test the parser
+
+first change the `test.grc` file
+then:
+
+```
+$ make clean
+$ make // ignore warnings :)
+$ ./compiler < test.grc

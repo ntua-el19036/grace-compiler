@@ -1,0 +1,13 @@
+$ myFunction(1,"xd", myvariable,innerFunction(), table[10])
+
+{
+    while (not x = 5) do
+    {
+        ;;
+        myFunction(myOtherFunction());
+        if(x<2) then x <- 2;
+        if(x=2) then x <- x + 1;
+        return x-3;
+    }
+}
+

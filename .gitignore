@@ -7,3 +7,5 @@ parser.hpp
 parser.output
 parser.cpp
 parser.o
+
+.vscode/
