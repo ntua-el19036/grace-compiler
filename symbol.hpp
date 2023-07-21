@@ -1,105 +1,107 @@
 #ifndef __SYMBOL_HPP__
 #define __SYMBOL_HPP__
 
-#include <map>
 #include <vector>
+#include <string>
+#include <list>
 #include <tuple>
+#include <functional>
 
 extern void yyerror(const char *msg);
 
 enum PassingType { BY_VALUE, BY_REFERENCE };
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
-enum EntryKind { FUNCTION, VARIABLE, PARAM};
 
-struct STEntry {
-    EntryKind kind;
-    DataType type;
-    int offset;
-    int param_count;
-    std::vector<DataType> paramTypes;
-    bool byRef;
+class STEntry {
+public:
+  int offset;
+  std::string name;
+  int scope_number;
+  int hash_value;
 
-    STEntry() {}
-    STEntry(EntryKind k, DataType t, int o) : kind(k), type(t), offset(o) {} //for variables
-    STEntry(EntryKind k, DataType t, int o, bool r) : kind(k), type(t), offset(o), byRef(r) {} //for params
-    STEntry(EntryKind k, DataType t, int o, std::vector<DataType> pt) //for function decls
-      : kind(k), type(t), offset(o), param_count(pt.size()), paramTypes(pt) {}
+  virtual ~STEntry() {}
+};
+
+class STEntryFunction : public STEntry {
+public:
+  DataType returnType;
+  std::vector<DataType> paramTypes;
+  std::vector<PassingType> paramPassingTypes;
+
+  STEntryFunction(DataType rt, std::vector<DataType> pt, std::vector<PassingType> ppt) :
+   returnType(rt), paramTypes(pt), paramPassingTypes(ppt) {}
+
+  
+};
+
+class HashTable {
+public:
+  int hashFunction(std::string str) {
+    std::hash<std::string> hash_fn;
+    return hash_fn(str) % capacity;
+  }
+
+  HashTable(int c) : capacity(c) {
+    entries = new std::list<STEntry>(capacity);
+  }
+
+  void insertItem(std::string str, STEntry *entry) {
+    int index = hashFunction(str);
+    entry->hash_value = index;
+    entries[index].push_front(*entry);
+  }
+
+  // TODO: implement this
+  void deleteItem(STEntry *entry) {}
+
+  // STEntry **table; //pointers to most recent hashed entries
+  std::list<STEntry> *entries;
+  int capacity;
 };
 
 class Scope {
- public:
-  Scope(int o = -1) : offset(o) {}
+public:
+  Scope(int o = -1) : offset(o), size(0) {}
 
-  STEntry *lookup(std::string str) {
-    if (locals.find(str) == locals.end()) return nullptr;
-    return &(locals[str]);
-  }
+  int getOffset() const { return offset; }
 
-  void insertVariable(std::string str, DataType t) {
-    if (locals.find(str) != locals.end())
-      yyerror("Duplicate declaration");
-    locals[str] = STEntry(VARIABLE, t, offset++);
-  }
+  int getSize() const { return size; }
 
-  void insertFunction(std::string str, DataType t, std::vector<std::tuple<DataType, std::string>> pt) {
-    if (locals.find(str) != locals.end())
-      yyerror("Duplicate declaration");
 
-    std::vector<DataType> paramTypes;
-    for (const auto& tuple : pt) {
-      paramTypes.push_back(std::get<0>(tuple));  // Add the DataType field to paramTypes
-    }
-    locals[str] = STEntry(FUNCTION, t, offset++, paramTypes);
-  }
 
-  void insertParam(std::string str, DataType t, bool ref) {
-    if (locals.find(str) != locals.end())
-      yyerror("Duplicate declaration");
-    locals[str] = STEntry(PARAM, t, offset++, ref);
-  }
-
-  int get_offset() {
-    return offset;
-  }
-
- private:
-  std::map<std::string, STEntry> locals;
+private:
   int offset;
+  int size;
 };
 
 class SymbolTable {
- public:
+
   STEntry *lookup(std::string str) {
-    for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {
-      STEntry *e = s->lookup(str);
-      if (e != nullptr) return e;
+    int index = hash_table->hashFunction(str);
+    for (auto entry : hash_table->entries[index]) {
+      if (entry.name == str) return &entry;
     }
-    yyerror("Identifier not found");
-    return nullptr;
-  }
-  void insertToStVariable(std::string str, DataType t) {
-    scopes.back().insertVariable(str, t);
-  }
-  void insertToStFunction(std::string str, DataType t, std::vector<std::tuple<DataType, std::string>> pt) {
-    scopes.back().insertFunction(str, t, pt);
-
-  }
-  void insertToStFunParam(std::string str, DataType t, std::vector<std::tuple<std::string, DataType>> pt) {
-    for(const auto& tuple :pt) {
-      scopes.back().insertParam(std::get<0>(tuple), std::get<1>(tuple), false);
-    }   
-  }
-  
-  void push_scope() {
-    int o = scopes.empty() ? 0 : scopes.back().get_offset();
-    scopes.push_back(Scope(o));
-  }
-  void pop_scope() {
-    scopes.pop_back();
+    yyerror("Unknown identifier");
   }
 
- private:
+  void insert() {
+    
+  }
+
+  void openScope() {
+    int offset = scopes.empty() ? 0 : scopes.back().getOffset();
+    scopes.push_back(Scope(offset));
+  }
+
+  // TODO: implement this
+  void closeScope() {
+    
+  }
+
+private:
   std::vector<Scope> scopes;
+  std::vector<STEntry> table;
+  HashTable *hash_table;
 };
 
 extern SymbolTable st;
