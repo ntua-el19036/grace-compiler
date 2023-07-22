@@ -28,15 +28,15 @@ public:
   DataType returnType;
   std::vector<std::tuple<DataType, PassingType>> paramTypes;
 
-  STEntryFunction(std::string str, DataType rt, std::vector<std::tuple<DataType, PassingType>> pt) :
-    returnType(rt), paramTypes(pt) { name = str; }  
+  STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType>> pt) :
+    returnType(rt), paramTypes(pt) {}  
 };
 
 class STEntryVariable : public STEntry {
 public:
   DataType type;
 
-  STEntryVariable(std::string str, DataType t) : type(t) { name = str; }
+  STEntryVariable(DataType t) : type(t) {}
 };
 
 class STEntryParam : public STEntry {
@@ -44,7 +44,7 @@ public:
   DataType type;
   PassingType passingType;
 
-  STEntryParam(std::string str, DataType t, PassingType pt) : type(t), passingType(pt) { name = str; }
+  STEntryParam(DataType t, PassingType pt) : type(t), passingType(pt) {}
 };
 
 class HashTable {
@@ -106,27 +106,39 @@ public:
     return nullptr;
   }
 
-  void insert_function(std::string str, DataType type, std::vector<std::tuple<DataType, PassingType>> param_types) {
+  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType>> param_types) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
-    if (previous_entry != nullptr && previous_entry->scope_number == num) { yyerror("Duplicate function declaration"); }
-    STEntryFunction *entry = new STEntryFunction(str, type, param_types);
+    if (previous_entry != nullptr && previous_entry->scope_number == num) {
+      yyerror("Duplicate function declaration"); 
+    }
+    STEntryFunction *entry = new STEntryFunction(rettype, param_types);
+    entry->name = str;
+    entry->scope_number = num;
     hash_table->insertItem(entry);
   }
 
   void insert_variable(std::string str, DataType type) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
-    if (previous_entry != nullptr && previous_entry->scope_number == num) { yyerror("Duplicate variable declaration"); }
-    STEntryVariable *entry = new STEntryVariable(str, type);
+    if (previous_entry != nullptr && previous_entry->scope_number == num) { 
+      yyerror("Duplicate variable declaration"); 
+    }
+    STEntryVariable *entry = new STEntryVariable(type);
+    entry->name = str;
+    entry->scope_number = num;
     hash_table->insertItem(entry);
   }
 
   void insert_param(std::string str, DataType type, PassingType passing_type) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
-    if (previous_entry != nullptr && previous_entry->scope_number == num) { yyerror("Duplicate parameter declaration"); }
-    STEntryParam *entry = new STEntryParam(str, type, passing_type);
+    if (previous_entry != nullptr && previous_entry->scope_number == num) { 
+      yyerror("Duplicate parameter declaration"); 
+    }
+    STEntryParam *entry = new STEntryParam(type, passing_type);
+    entry->name = str;
+    entry->scope_number = num;
     hash_table->insertItem(entry);
   }
 
