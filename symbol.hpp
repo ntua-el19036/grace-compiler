@@ -26,24 +26,25 @@ public:
 };
 
 class STEntryFunction : public STEntry {
-public:
-  int offset;
-  std::string name;
-  int scope_number;
-  int hash_value;
+public:  
   DataType returnType;
   std::vector<std::tuple<DataType, PassingType>> paramTypes;
+  //maybe we don't need the passing type for semantic checking
 
+  void printEntry() {
+    std::cout << "name: " << name << std::endl;
+    std::cout << "return type: " << returnType << std::endl;
+    std::cout << "param types: " << std::endl;
+    for (auto x : paramTypes) {
+      std::cout << std::get<0>(x) << " " << std::get<1>(x) << std::endl;
+    }
+  }
   STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType>> pt) :
     returnType(rt), paramTypes(pt) {}  
 };
 
 class STEntryVariable : public STEntry {
 public:
-  // int offset;
-  // std::string name;
-  // int scope_number;
-  // int hash_value;
   DataType type;
 
   STEntryVariable(DataType t) : type(t) {}
@@ -55,10 +56,6 @@ public:
 
 class STEntryParam : public STEntry {
 public:
-  int offset;
-  std::string name;
-  int scope_number;
-  int hash_value;
   DataType type;
   PassingType passingType;
 
@@ -112,6 +109,8 @@ public:
 
   int getScopeNumber() const { return scope_number; }
 
+  void incrementSize(int s) { size += s; }
+
 private:
   int offset;
   int scope_number;
@@ -148,12 +147,16 @@ public:
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) {
-      yyerror("Duplicate function declaration"); 
+      yyerror("Duplicate declaration"); 
     }
     STEntryFunction *entry = new STEntryFunction(rettype, param_types);
     entry->name = str;
     entry->scope_number = num;
+    std::cout << entry->name << std::endl;
+    std::cout << entry->returnType << std::endl;
     hash_table->insertItem(entry);
+    entry->printEntry();
+    scopes.back().incrementSize(1);
   }
 
   void insert_variable(std::string str, DataType type) {
@@ -167,11 +170,12 @@ public:
     }
     STEntryVariable *entry = new STEntryVariable(type);
     std::cout << entry->type << std::endl;
-    entry->setName(str);
+    entry->name = str;
     std::cout << entry->name << std::endl;
     entry->scope_number = num;
     std::cout << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
+    scopes.back().incrementSize(1);
   }
 
   void insert_param(std::string str, DataType type, PassingType passing_type) {
@@ -184,6 +188,7 @@ public:
     entry->name = str;
     entry->scope_number = num;
     hash_table->insertItem(entry);
+    scopes.back().incrementSize(1);
   }
 
   void openScope() {
@@ -202,7 +207,6 @@ public:
 
 private:
   std::vector<Scope> scopes;
-  std::vector<STEntry> table;
   HashTable *hash_table;
 };
 

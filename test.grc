@@ -1,3 +1,5 @@
 var x : int;
 var y : int;
 var z : char;
+
+fun petros(ref a: char ; x,y : int; z: char) : nothing;

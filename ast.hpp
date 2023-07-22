@@ -421,6 +421,7 @@ public:
     out << "VariableType(" << datatype << ", " << *dim << ")";
   }
 
+  // TODO: implement array types
   DataType getDataType() const { return datatype; }
 
 private:
@@ -436,6 +437,10 @@ public:
 
   void printOn(std::ostream &out) const override {
     out << "FuncParam(" << (bool(passing_type) ? "reference, ":"value, ") << *id << ", " << *param_type << ")";
+  }
+
+  std::tuple<DataType, PassingType> getParam() const {
+    return std::make_tuple(param_type->getDataType(), passing_type);
   }
 
 private:
@@ -457,7 +462,9 @@ public:
       add_param(new FuncParam(id, fpt, pt));
     }
   }
-  // ~FuncParamList() {}
+  ~FuncParamList() {
+    for (FuncParam *p : param_list) delete p;
+  }
 
   void join(FuncParamList *other) {
     param_list.insert(param_list.end(), other->param_list.begin(), other->param_list.end());
@@ -483,6 +490,22 @@ public:
     out << "Header(" << *id << ": " << returntype;
     if (paramlist != nullptr) out << ", " << *paramlist;
     out << ")";
+  }
+
+  virtual void sem() override {
+    std::cout << "Header(" << *id << ": " << returntype;
+    if (paramlist != nullptr) std::cout << ", " << *paramlist;
+    std::cout << ")" << std::endl;
+    std::vector<std::tuple<DataType, PassingType>> param_types;
+    if (paramlist != nullptr) {
+      for(const auto &p : paramlist->param_list) {
+        param_types.push_back(p->getParam());
+      }
+    }
+    for(const auto &p : param_types) {
+      std::cout << std::get<0>(p) << " " << std::get<1>(p) << std::endl;
+    }
+    st.insert_function(*id, returntype, param_types);
   }
 
 private:
@@ -560,6 +583,11 @@ public:
 
   void printOn(std::ostream &out) const override {
     out << "FunctionDeclaration(" << *header << ")";
+  }
+
+  virtual void sem() override {
+    std::cout << "FunctionDeclaration(" << *header << ")" << std::endl;
+    header->sem();
   }
 
 private:
