@@ -11,7 +11,7 @@ extern void yyerror(const char *msg);
 
 enum PassingType { BY_VALUE, BY_REFERENCE };
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
-enum EntryKind { FUNCTION, VARIABLE, PARAM};
+enum EntryKind { FUNCTION, VARIABLE, PARAM}; //unused
 
 class STEntry {
 public:
@@ -21,7 +21,11 @@ public:
   int scope_number;
   int hash_value;
 
+  std::string TypeName[3] = { "int", "char", "nothing" };
+  std::string PassingTypeName[2] = { "by value", "by reference" };
+
   STEntry() {}
+  virtual void printEntry() const {}
   virtual ~STEntry() {}
 };
 
@@ -30,17 +34,21 @@ public:
   DataType returnType;
   std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> paramTypes;
 
-  void printEntry() {
+  virtual void printEntry() const override {
     std::cout << "name: " << name << std::endl;
-    std::cout << "return type: " << returnType << std::endl;
-    std::cout << "param types: " << std::endl;
+    std::cout << "return type: " << TypeName[returnType] << std::endl;
+    if(paramTypes.empty()) { std::cout << "no parameters" << std::endl; return; }
+    std::cout << "param types: ";
     for (auto x : paramTypes) {
-      std::cout << std::get<0>(x) << " " << std::get<1>(x) << " ";
+      std::cout << std::endl;
+      std::cout << TypeName[std::get<0>(x)] << " " << PassingTypeName[std::get<1>(x)] << " ";
+      if(std::get<3>(x)) std::cout << "[]";
+      if(std::get<2>(x).empty()) continue;
       for(auto d : std::get<2>(x)) {
-        std::cout << d << ", ";
+        std::cout << "[" << d << "]";
       }
-      std::cout << " " << std::get<3>(x) << std::endl;
     }
+    std::cout << std::endl;
   }
   STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> pt) :
     returnType(rt), paramTypes(pt) {}  
@@ -51,10 +59,14 @@ public:
   DataType type;
   std::vector<int> dimensions;
 
-  STEntryVariable(DataType t, std::vector<int> d) : type(t), dimensions(d) {
-    std::cout << "creating variable entry of type " << type << std::endl;
+  STEntryVariable(DataType t, std::vector<int> d) : type(t), dimensions(d) {}
+
+  virtual void printEntry() const override {
+    std::cout << "name: " << name << std::endl;
+    std::cout << "type: " << TypeName[type] << " ";
+    if(dimensions.empty()) { std::cout << std::endl; return; }
     for (auto d : dimensions) {
-      std::cout << d << ", ";
+      std::cout << "[" << d << "]";
     }
     std::cout << std::endl;
   }
@@ -73,6 +85,18 @@ public:
 
   STEntryParam(DataType t, PassingType pt, std::vector<int> d, bool m) : type(t),
     passingType(pt), dimensions(d), missingFirstDimension(m) {}
+
+  virtual void printEntry() const override {
+    std::cout << "name: " << name << std::endl;
+    std::cout << "passing type: " << PassingTypeName[passingType] << std::endl;
+    std::cout << "type: " << TypeName[type];
+    if(missingFirstDimension) std::cout << "[]";
+    if(dimensions.empty()) { std::cout<< std::endl; return; }
+    for (auto d : dimensions) {
+      std::cout << "[" << d << "]";
+    }
+    std::cout << std::endl;
+  }
 };
 
 class HashTable {
@@ -89,7 +113,7 @@ public:
   void insertItem(STEntry *entry) {
     int index = hashFunction(entry->name);
     entry->hash_value = index;
-    std::cout << "inserting " << entry->name << " at " << index << std::endl;
+    std::cout << "inserting " << entry->name << " at index " << index << std::endl;
     entries[index].push_front(*entry);
   }
 
@@ -110,7 +134,7 @@ public:
       if(entries[i].empty()) continue;
        std::cout << i << " --> " ;
       for (auto x : entries[i]) {
-        std::cout << x.name << " " << x.hash_value << " ";
+        std::cout << x.name << " ";
       }
       std::cout << std::endl;
     }
@@ -174,7 +198,7 @@ public:
     STEntryFunction *entry = new STEntryFunction(rettype, param_types);
     entry->name = str;
     entry->scope_number = num;
-    std::cout << "scope number: " << entry->scope_number << std::endl;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
     entry->printEntry();
     scopes.back().incrementSize(1);
@@ -186,14 +210,12 @@ public:
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
       yyerror("Duplicate declaration"); 
     }
-    else {
-      std::cout << "no duplicate" << std::endl;
-    }
     STEntryVariable *entry = new STEntryVariable(type, dimensions);
     entry->name = str;
     entry->scope_number = num;
-    std::cout << "scope number: " << entry->scope_number << std::endl;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
+    entry->printEntry();
     scopes.back().incrementSize(1);
   }
 
@@ -206,8 +228,9 @@ public:
     STEntryParam *entry = new STEntryParam(type, passing_type, dimensions, missing_first_dimension);
     entry->name = str;
     entry->scope_number = num;
-    std::cout << "scope number: " << entry->scope_number << std::endl;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
+    entry->printEntry();
     scopes.back().incrementSize(1);
   }
 
@@ -218,6 +241,7 @@ public:
       number = scopes.back().getScopeNumber() + 1;
     }
     scopes.push_back(Scope(ofs, number));
+    std::cout << "Opening scope: " << number << std::endl;
   }
 
   // TODO: implement this

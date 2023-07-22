@@ -516,9 +516,6 @@ public:
   }
 
   virtual void sem() override {
-    std::cout << "Header(" << *id << ": " << returntype;
-    if (paramlist != nullptr) std::cout << ", " << *paramlist;
-    std::cout << ")" << std::endl;
     std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
     if (paramlist != nullptr) {
       for(const auto &p : paramlist->param_list) {
@@ -554,7 +551,6 @@ public:
   }
 
   virtual void sem() override {
-    std::cout << "VariableDefinition(" << *id << ", " << variable_type->getDataType() << ")" << std::endl;
     st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions());
   }
 private:
@@ -609,7 +605,6 @@ public:
   }
 
   virtual void sem() override {
-    std::cout << "FunctionDeclaration(" << *header << ")" << std::endl;
     header->sem();
   }
 
@@ -629,9 +624,6 @@ public:
   }
 
   virtual void sem() override {
-    std::cout << "FunctionDefinition(" << *header << 
-      ", " << *definition_list << 
-      ", " << *block << ")" << std::endl;
       if(st.not_exists_scope()) st.openScope(); 
       header->sem();
       st.openScope();
