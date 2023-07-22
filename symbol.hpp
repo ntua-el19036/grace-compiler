@@ -152,8 +152,7 @@ public:
     STEntryFunction *entry = new STEntryFunction(rettype, param_types);
     entry->name = str;
     entry->scope_number = num;
-    std::cout << entry->name << std::endl;
-    std::cout << entry->returnType << std::endl;
+    std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
     entry->printEntry();
     scopes.back().incrementSize(1);
@@ -169,11 +168,9 @@ public:
       std::cout << "no duplicate" << std::endl;
     }
     STEntryVariable *entry = new STEntryVariable(type);
-    std::cout << entry->type << std::endl;
     entry->name = str;
-    std::cout << entry->name << std::endl;
     entry->scope_number = num;
-    std::cout << entry->scope_number << std::endl;
+    std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
     scopes.back().incrementSize(1);
   }
@@ -182,11 +179,12 @@ public:
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
-      yyerror("Duplicate parameter declaration"); 
+      yyerror("Duplicate declaration"); 
     }
     STEntryParam *entry = new STEntryParam(type, passing_type);
     entry->name = str;
     entry->scope_number = num;
+    std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
     scopes.back().incrementSize(1);
   }
@@ -203,6 +201,10 @@ public:
   // TODO: implement this
   void closeScope() {
     
+  }
+
+  int not_exists_scope() {
+    return scopes.empty();
   }
 
 private:

@@ -80,7 +80,7 @@ SymbolTable st;
 %%
 
 program:
-  local_def_list { st = SymbolTable(); $1->sem();
+  func_def { st = SymbolTable(); $1->sem();
     //std::cout << "AST: " << *$1 << std::endl; 
     }
 ;

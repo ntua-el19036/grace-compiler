@@ -443,6 +443,10 @@ public:
     return std::make_tuple(param_type->getDataType(), passing_type);
   }
 
+  virtual void sem() override {
+    st.insert_param(*id, param_type->getDataType(), passing_type);
+  }
+
 private:
   std::string *id;
   VariableType *param_type;
@@ -480,6 +484,12 @@ public:
     }
     out << ")";
   }
+
+  virtual void sem() override {
+    for (const auto &p : param_list) {
+      p->sem();
+    }
+  }
 };
 
 class Header: public AST {
@@ -506,6 +516,12 @@ public:
       std::cout << std::get<0>(p) << " " << std::get<1>(p) << std::endl;
     }
     st.insert_function(*id, returntype, param_types);
+  }
+
+  void register_param_list() {
+    if (paramlist != nullptr) {
+      paramlist->sem();
+    }
   }
 
 private:
@@ -568,12 +584,9 @@ public:
   }
 
   virtual void sem() override {
-    st.openScope();
     for (const auto &ld : local_definition_list) {
       ld->sem();
     }
-    st.display();
-    // st.closeScope();
   }
 };
 
@@ -594,7 +607,6 @@ private:
   Header *header;
 };
 
-// TODO: Complete this class
 class FunctionDefinition: public LocalDefinition {
 public:
   FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b): header(h), definition_list(d), block(b) {}
@@ -604,6 +616,19 @@ public:
     out << "FunctionDefinition(" << *header << 
       ", " << *definition_list << 
       ", " << *block << ")";
+  }
+
+  virtual void sem() override {
+    std::cout << "FunctionDefinition(" << *header << 
+      ", " << *definition_list << 
+      ", " << *block << ")" << std::endl;
+      if(st.not_exists_scope()) st.openScope(); 
+      header->sem();
+      st.openScope();
+      header->register_param_list();
+      definition_list->sem();
+      st.display();
+      st.closeScope();  
   }
 
 private:
