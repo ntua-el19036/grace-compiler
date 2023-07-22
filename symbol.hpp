@@ -80,8 +80,17 @@ public:
     entries[index].push_front(*entry);
   }
 
-  // TODO: implement this
-  void deleteItem(STEntry *entry) {}
+  void deleteScope(int scope_number) {
+    for (int i = 0; i < capacity; i++) {
+      if(entries[i].empty()) continue;
+      for(std::list<STEntry>::iterator it = entries[i].begin(); it != entries[i].end(); it++) {
+        std::cout << "deleting " << it->name << " at " << i << std::endl;
+        if (it->scope_number == scope_number) {
+          it = entries[i].erase(it);
+        }
+      }
+    }
+  }
 
   void displayHash() {
     for (int i = 0; i < capacity; i++) {
@@ -200,7 +209,10 @@ public:
 
   // TODO: implement this
   void closeScope() {
-    
+    int current = scopes.back().getScopeNumber();
+    std::cout << "closing scope " << current << std::endl;
+    hash_table->deleteScope(current);
+    scopes.pop_back();
   }
 
   int not_exists_scope() {

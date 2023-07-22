@@ -1,25 +1,11 @@
 fun main () : nothing 
     var x : int;
-  $  var y : int;
-    $var z : char;
 
-    fun petros(ref a: char ; b,c : int; d: char) : nothing 
+    fun petros(ref a: char ; b : int) : int 
         var p : char[10];
-    {
-
-    }
+    {}
 
     fun apostolos() : char;
 
-    $ fun ky (): int {}
+    var y : char;
 {}
-$$
-
-var x : int;
-    var y : int;
-    var z : char;
-
-    fun petros(ref a: char ; x,y : int; z: char) : nothing ;
-
-    fun apostolos() : char;
-$$

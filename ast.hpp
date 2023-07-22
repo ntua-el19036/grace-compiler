@@ -627,8 +627,11 @@ public:
       st.openScope();
       header->register_param_list();
       definition_list->sem();
+      std::cout<<"Before end of scope"<<std::endl;
       st.display();
-      st.closeScope();  
+      st.closeScope();
+      std::cout<<"After end of scope"<<std::endl;
+      st.display();
   }
 
 private:
