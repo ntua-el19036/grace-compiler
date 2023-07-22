@@ -1,7 +1,7 @@
 fun main () : nothing 
-    var x : int;
+    var x : int[1][2][3];
 
-    fun petros(ref a: char ; b : int) : int 
+    fun petros(ref a: char[][1] ; b : int) : int 
         var p : char[10];
     {}
 

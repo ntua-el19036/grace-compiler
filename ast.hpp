@@ -408,6 +408,10 @@ public:
     out << ")";
   }
 
+  std::vector<int> getDimensions() const {
+    return dimensions;
+  }
+
 private:
   std::vector<int> dimensions;
 };
@@ -424,6 +428,15 @@ public:
   // TODO: implement array types
   DataType getDataType() const { return datatype; }
 
+  std::vector<int> getDimensions() const {
+    return dim->getDimensions();
+  }
+
+  bool getMissingFirstDimension() const {
+    return dim->missingFirstDimension;
+  }
+    
+
 private:
   DataType datatype;
   ArrayDimension *dim;
@@ -439,12 +452,12 @@ public:
     out << "FuncParam(" << (bool(passing_type) ? "reference, ":"value, ") << *id << ", " << *param_type << ")";
   }
 
-  std::tuple<DataType, PassingType> getParam() const {
-    return std::make_tuple(param_type->getDataType(), passing_type);
+  std::tuple<DataType, PassingType, std::vector<int>, bool> getParam() const {
+    return std::make_tuple(param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
   }
 
   virtual void sem() override {
-    st.insert_param(*id, param_type->getDataType(), passing_type);
+    st.insert_param(*id, param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
   }
 
 private:
@@ -506,14 +519,11 @@ public:
     std::cout << "Header(" << *id << ": " << returntype;
     if (paramlist != nullptr) std::cout << ", " << *paramlist;
     std::cout << ")" << std::endl;
-    std::vector<std::tuple<DataType, PassingType>> param_types;
+    std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
     if (paramlist != nullptr) {
       for(const auto &p : paramlist->param_list) {
         param_types.push_back(p->getParam());
       }
-    }
-    for(const auto &p : param_types) {
-      std::cout << std::get<0>(p) << " " << std::get<1>(p) << std::endl;
     }
     st.insert_function(*id, returntype, param_types);
   }
@@ -545,7 +555,7 @@ public:
 
   virtual void sem() override {
     std::cout << "VariableDefinition(" << *id << ", " << variable_type->getDataType() << ")" << std::endl;
-    st.insert_variable(*id, variable_type->getDataType());
+    st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions());
   }
 private:
   std::string *id;

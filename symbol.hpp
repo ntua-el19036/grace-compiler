@@ -28,38 +28,51 @@ public:
 class STEntryFunction : public STEntry {
 public:  
   DataType returnType;
-  std::vector<std::tuple<DataType, PassingType>> paramTypes;
-  //maybe we don't need the passing type for semantic checking
+  std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> paramTypes;
 
   void printEntry() {
     std::cout << "name: " << name << std::endl;
     std::cout << "return type: " << returnType << std::endl;
     std::cout << "param types: " << std::endl;
     for (auto x : paramTypes) {
-      std::cout << std::get<0>(x) << " " << std::get<1>(x) << std::endl;
+      std::cout << std::get<0>(x) << " " << std::get<1>(x) << " ";
+      for(auto d : std::get<2>(x)) {
+        std::cout << d << ", ";
+      }
+      std::cout << " " << std::get<3>(x) << std::endl;
     }
   }
-  STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType>> pt) :
+  STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> pt) :
     returnType(rt), paramTypes(pt) {}  
 };
 
 class STEntryVariable : public STEntry {
 public:
   DataType type;
+  std::vector<int> dimensions;
 
-  STEntryVariable(DataType t) : type(t) {}
+  STEntryVariable(DataType t, std::vector<int> d) : type(t), dimensions(d) {
+    std::cout << "creating variable entry of type " << type << std::endl;
+    for (auto d : dimensions) {
+      std::cout << d << ", ";
+    }
+    std::cout << std::endl;
+  }
 
   DataType getType() const { return type; }
 
-  void setName(std::string str) { name = str; }
+  // void setName(std::string str) { name = str; }
 };
 
 class STEntryParam : public STEntry {
 public:
   DataType type;
   PassingType passingType;
+  std::vector<int> dimensions;
+  bool missingFirstDimension;
 
-  STEntryParam(DataType t, PassingType pt) : type(t), passingType(pt) {}
+  STEntryParam(DataType t, PassingType pt, std::vector<int> d, bool m) : type(t),
+    passingType(pt), dimensions(d), missingFirstDimension(m) {}
 };
 
 class HashTable {
@@ -152,7 +165,7 @@ public:
     return nullptr;
   }
 
-  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType>> param_types) {
+  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) {
@@ -167,7 +180,7 @@ public:
     scopes.back().incrementSize(1);
   }
 
-  void insert_variable(std::string str, DataType type) {
+  void insert_variable(std::string str, DataType type, std::vector<int> dimensions) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
@@ -176,7 +189,7 @@ public:
     else {
       std::cout << "no duplicate" << std::endl;
     }
-    STEntryVariable *entry = new STEntryVariable(type);
+    STEntryVariable *entry = new STEntryVariable(type, dimensions);
     entry->name = str;
     entry->scope_number = num;
     std::cout << "scope number: " << entry->scope_number << std::endl;
@@ -184,13 +197,13 @@ public:
     scopes.back().incrementSize(1);
   }
 
-  void insert_param(std::string str, DataType type, PassingType passing_type) {
+  void insert_param(std::string str, DataType type, PassingType passing_type, std::vector<int> dimensions, bool missing_first_dimension) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
       yyerror("Duplicate declaration"); 
     }
-    STEntryParam *entry = new STEntryParam(type, passing_type);
+    STEntryParam *entry = new STEntryParam(type, passing_type, dimensions, missing_first_dimension);
     entry->name = str;
     entry->scope_number = num;
     std::cout << "scope number: " << entry->scope_number << std::endl;
