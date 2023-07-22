@@ -15,16 +15,22 @@ enum EntryKind { FUNCTION, VARIABLE, PARAM};
 
 class STEntry {
 public:
+
   int offset;
   std::string name;
   int scope_number;
   int hash_value;
 
+  STEntry() {}
   virtual ~STEntry() {}
 };
 
 class STEntryFunction : public STEntry {
 public:
+  int offset;
+  std::string name;
+  int scope_number;
+  int hash_value;
   DataType returnType;
   std::vector<std::tuple<DataType, PassingType>> paramTypes;
 
@@ -34,13 +40,25 @@ public:
 
 class STEntryVariable : public STEntry {
 public:
+  // int offset;
+  // std::string name;
+  // int scope_number;
+  // int hash_value;
   DataType type;
 
   STEntryVariable(DataType t) : type(t) {}
+
+  DataType getType() const { return type; }
+
+  void setName(std::string str) { name = str; }
 };
 
 class STEntryParam : public STEntry {
 public:
+  int offset;
+  std::string name;
+  int scope_number;
+  int hash_value;
   DataType type;
   PassingType passingType;
 
@@ -55,17 +73,29 @@ public:
   }
 
   HashTable(int c) : capacity(c) {
-    entries = new std::list<STEntry>(capacity);
+    entries = new std::list<STEntry>[capacity];
   }
 
   void insertItem(STEntry *entry) {
     int index = hashFunction(entry->name);
     entry->hash_value = index;
+    std::cout << "inserting " << entry->name << " at " << index << std::endl;
     entries[index].push_front(*entry);
   }
 
   // TODO: implement this
   void deleteItem(STEntry *entry) {}
+
+  void displayHash() {
+    for (int i = 0; i < capacity; i++) {
+      if(entries[i].empty()) continue;
+       std::cout << i << " --> " ;
+      for (auto x : entries[i]) {
+        std::cout << x.name << " " << x.hash_value << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
 
   // STEntry **table; //pointers to most recent hashed entries
   std::list<STEntry> *entries;
@@ -92,6 +122,14 @@ class SymbolTable {
 public:
   SymbolTable(int c = 1001) {
     hash_table = new HashTable(c);
+  }
+
+  // ~SymbolTable() {
+  //   delete hash_table;
+  // }
+
+  void display() {
+    hash_table->displayHash();
   }
 
   /*
@@ -122,11 +160,17 @@ public:
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
-      yyerror("Duplicate variable declaration"); 
+      yyerror("Duplicate declaration"); 
+    }
+    else {
+      std::cout << "no duplicate" << std::endl;
     }
     STEntryVariable *entry = new STEntryVariable(type);
-    entry->name = str;
+    std::cout << entry->type << std::endl;
+    entry->setName(str);
+    std::cout << entry->name << std::endl;
     entry->scope_number = num;
+    std::cout << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
   }
 

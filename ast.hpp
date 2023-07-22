@@ -6,10 +6,12 @@
 #include "symbol.hpp"
 #include <memory>
 
+
 class AST {
 public:
   virtual ~AST() {}
   virtual void printOn(std::ostream &out) const = 0;
+  virtual void sem() {}
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -419,6 +421,8 @@ public:
     out << "VariableType(" << datatype << ", " << *dim << ")";
   }
 
+  DataType getDataType() const { return datatype; }
+
 private:
   DataType datatype;
   ArrayDimension *dim;
@@ -499,6 +503,11 @@ public:
   void printOn(std::ostream &out) const override {
     out << "VariableDefinition(" << *id << ", " << *variable_type << ")";
   }
+
+  virtual void sem() override {
+    std::cout << "VariableDefinition(" << *id << ", " << variable_type->getDataType() << ")" << std::endl;
+    st.insert_variable(*id, variable_type->getDataType());
+  }
 private:
   std::string *id;
   VariableType *variable_type;
@@ -533,6 +542,15 @@ public:
       out << *ld;
     }
     out << ")";
+  }
+
+  virtual void sem() override {
+    st.openScope();
+    for (const auto &ld : local_definition_list) {
+      ld->sem();
+    }
+    st.display();
+    // st.closeScope();
   }
 };
 
