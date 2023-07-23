@@ -6,10 +6,12 @@
 #include "symbol.hpp"
 #include <memory>
 
+
 class AST {
 public:
   virtual ~AST() {}
   virtual void printOn(std::ostream &out) const = 0;
+  virtual void sem() {}
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -406,6 +408,10 @@ public:
     out << ")";
   }
 
+  std::vector<int> getDimensions() const {
+    return dimensions;
+  }
+
 private:
   std::vector<int> dimensions;
 };
@@ -418,6 +424,18 @@ public:
   void printOn(std::ostream &out) const override {
     out << "VariableType(" << datatype << ", " << *dim << ")";
   }
+
+  // TODO: implement array types
+  DataType getDataType() const { return datatype; }
+
+  std::vector<int> getDimensions() const {
+    return dim->getDimensions();
+  }
+
+  bool getMissingFirstDimension() const {
+    return dim->missingFirstDimension;
+  }
+    
 
 private:
   DataType datatype;
@@ -432,6 +450,14 @@ public:
 
   void printOn(std::ostream &out) const override {
     out << "FuncParam(" << (bool(passing_type) ? "reference, ":"value, ") << *id << ", " << *param_type << ")";
+  }
+
+  std::tuple<DataType, PassingType, std::vector<int>, bool> getParam() const {
+    return std::make_tuple(param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
+  }
+
+  virtual void sem() override {
+    st.insert_param(*id, param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
   }
 
 private:
@@ -453,7 +479,9 @@ public:
       add_param(new FuncParam(id, fpt, pt));
     }
   }
-  // ~FuncParamList() {}
+  ~FuncParamList() {
+    for (FuncParam *p : param_list) delete p;
+  }
 
   void join(FuncParamList *other) {
     param_list.insert(param_list.end(), other->param_list.begin(), other->param_list.end());
@@ -469,6 +497,12 @@ public:
     }
     out << ")";
   }
+
+  virtual void sem() override {
+    for (const auto &p : param_list) {
+      p->sem();
+    }
+  }
 };
 
 class Header: public AST {
@@ -479,6 +513,22 @@ public:
     out << "Header(" << *id << ": " << returntype;
     if (paramlist != nullptr) out << ", " << *paramlist;
     out << ")";
+  }
+
+  virtual void sem() override {
+    std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
+    if (paramlist != nullptr) {
+      for(const auto &p : paramlist->param_list) {
+        param_types.push_back(p->getParam());
+      }
+    }
+    st.insert_function(*id, returntype, param_types);
+  }
+
+  void register_param_list() {
+    if (paramlist != nullptr) {
+      paramlist->sem();
+    }
   }
 
 private:
@@ -498,6 +548,10 @@ public:
   ~VariableDefinition() {delete id; delete variable_type; }
   void printOn(std::ostream &out) const override {
     out << "VariableDefinition(" << *id << ", " << *variable_type << ")";
+  }
+
+  virtual void sem() override {
+    st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions());
   }
 private:
   std::string *id;
@@ -534,6 +588,12 @@ public:
     }
     out << ")";
   }
+
+  virtual void sem() override {
+    for (const auto &ld : local_definition_list) {
+      ld->sem();
+    }
+  }
 };
 
 class FunctionDeclaration: public LocalDefinition {
@@ -544,11 +604,14 @@ public:
     out << "FunctionDeclaration(" << *header << ")";
   }
 
+  virtual void sem() override {
+    header->sem();
+  }
+
 private:
   Header *header;
 };
 
-// TODO: Complete this class
 class FunctionDefinition: public LocalDefinition {
 public:
   FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b): header(h), definition_list(d), block(b) {}
@@ -558,6 +621,19 @@ public:
     out << "FunctionDefinition(" << *header << 
       ", " << *definition_list << 
       ", " << *block << ")";
+  }
+
+  virtual void sem() override {
+      if(st.not_exists_scope()) st.openScope(); 
+      header->sem();
+      st.openScope();
+      header->register_param_list();
+      definition_list->sem();
+      std::cout<<"Before end of scope"<<std::endl;
+      st.display();
+      st.closeScope();
+      std::cout<<"After end of scope"<<std::endl;
+      st.display();
   }
 
 private:

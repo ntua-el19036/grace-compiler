@@ -1,13 +1,11 @@
-$ myFunction(1,"xd", myvariable,innerFunction(), table[10])
+fun main () : nothing 
+    var x : int[1][2][3];
 
-{
-    while (not x = 5) do
-    {
-        ;;
-        myFunction(myOtherFunction());
-        if(x<2) then x <- 2;
-        if(x=2) then x <- x + 1;
-        return x-3;
-    }
-}
+    fun petros(ref a: char[][1] ; b : int) : int 
+        var p : char[10];
+    {}
 
+    fun apostolos() : char;
+
+    var y : char;
+{}

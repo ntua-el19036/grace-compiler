@@ -1,105 +1,264 @@
 #ifndef __SYMBOL_HPP__
 #define __SYMBOL_HPP__
 
-#include <map>
 #include <vector>
+#include <string>
+#include <list>
 #include <tuple>
+#include <functional>
 
 extern void yyerror(const char *msg);
 
 enum PassingType { BY_VALUE, BY_REFERENCE };
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
-enum EntryKind { FUNCTION, VARIABLE, PARAM};
+enum EntryKind { FUNCTION, VARIABLE, PARAM}; //unused
 
-struct STEntry {
-    EntryKind kind;
-    DataType type;
-    int offset;
-    int param_count;
-    std::vector<DataType> paramTypes;
-    bool byRef;
+class STEntry {
+public:
 
-    STEntry() {}
-    STEntry(EntryKind k, DataType t, int o) : kind(k), type(t), offset(o) {} //for variables
-    STEntry(EntryKind k, DataType t, int o, bool r) : kind(k), type(t), offset(o), byRef(r) {} //for params
-    STEntry(EntryKind k, DataType t, int o, std::vector<DataType> pt) //for function decls
-      : kind(k), type(t), offset(o), param_count(pt.size()), paramTypes(pt) {}
+  int offset;
+  std::string name;
+  int scope_number;
+  int hash_value;
+
+  std::string TypeName[3] = { "int", "char", "nothing" };
+  std::string PassingTypeName[2] = { "by value", "by reference" };
+
+  STEntry() {}
+  virtual void printEntry() const {}
+  virtual ~STEntry() {}
+};
+
+class STEntryFunction : public STEntry {
+public:  
+  DataType returnType;
+  std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> paramTypes;
+
+  virtual void printEntry() const override {
+    std::cout << "name: " << name << std::endl;
+    std::cout << "return type: " << TypeName[returnType] << std::endl;
+    if(paramTypes.empty()) { std::cout << "no parameters" << std::endl; return; }
+    std::cout << "param types: ";
+    for (auto x : paramTypes) {
+      std::cout << std::endl;
+      std::cout << TypeName[std::get<0>(x)] << " " << PassingTypeName[std::get<1>(x)] << " ";
+      if(std::get<3>(x)) std::cout << "[]";
+      if(std::get<2>(x).empty()) continue;
+      for(auto d : std::get<2>(x)) {
+        std::cout << "[" << d << "]";
+      }
+    }
+    std::cout << std::endl;
+  }
+  STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> pt) :
+    returnType(rt), paramTypes(pt) {}  
+};
+
+class STEntryVariable : public STEntry {
+public:
+  DataType type;
+  std::vector<int> dimensions;
+
+  STEntryVariable(DataType t, std::vector<int> d) : type(t), dimensions(d) {}
+
+  virtual void printEntry() const override {
+    std::cout << "name: " << name << std::endl;
+    std::cout << "type: " << TypeName[type] << " ";
+    if(dimensions.empty()) { std::cout << std::endl; return; }
+    for (auto d : dimensions) {
+      std::cout << "[" << d << "]";
+    }
+    std::cout << std::endl;
+  }
+
+  DataType getType() const { return type; }
+
+  // void setName(std::string str) { name = str; }
+};
+
+class STEntryParam : public STEntry {
+public:
+  DataType type;
+  PassingType passingType;
+  std::vector<int> dimensions;
+  bool missingFirstDimension;
+
+  STEntryParam(DataType t, PassingType pt, std::vector<int> d, bool m) : type(t),
+    passingType(pt), dimensions(d), missingFirstDimension(m) {}
+
+  virtual void printEntry() const override {
+    std::cout << "name: " << name << std::endl;
+    std::cout << "passing type: " << PassingTypeName[passingType] << std::endl;
+    std::cout << "type: " << TypeName[type];
+    if(missingFirstDimension) std::cout << "[]";
+    if(dimensions.empty()) { std::cout<< std::endl; return; }
+    for (auto d : dimensions) {
+      std::cout << "[" << d << "]";
+    }
+    std::cout << std::endl;
+  }
+};
+
+class HashTable {
+public:
+  int hashFunction(std::string str) {
+    std::hash<std::string> hash_fn;
+    return hash_fn(str) % capacity;
+  }
+
+  HashTable(int c) : capacity(c) {
+    entries = new std::list<STEntry>[capacity];
+  }
+
+  void insertItem(STEntry *entry) {
+    int index = hashFunction(entry->name);
+    entry->hash_value = index;
+    std::cout << "inserting " << entry->name << " at index " << index << std::endl;
+    entries[index].push_front(*entry);
+  }
+
+  void deleteScope(int scope_number) {
+    for (int i = 0; i < capacity; i++) {
+      if(entries[i].empty()) continue;
+      for(std::list<STEntry>::iterator it = entries[i].begin(); it != entries[i].end(); it++) {
+        std::cout << "deleting " << it->name << " at " << i << std::endl;
+        if (it->scope_number == scope_number) {
+          it = entries[i].erase(it);
+        }
+      }
+    }
+  }
+
+  void displayHash() {
+    for (int i = 0; i < capacity; i++) {
+      if(entries[i].empty()) continue;
+       std::cout << i << " --> " ;
+      for (auto x : entries[i]) {
+        std::cout << x.name << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
+
+  // STEntry **table; //pointers to most recent hashed entries
+  std::list<STEntry> *entries;
+  int capacity;
 };
 
 class Scope {
- public:
-  Scope(int o = -1) : offset(o) {}
+public:
+  Scope(int o = -1, int n = 1) : offset(o), scope_number(n), size(0) {}
 
-  STEntry *lookup(std::string str) {
-    if (locals.find(str) == locals.end()) return nullptr;
-    return &(locals[str]);
-  }
+  int getOffset() const { return offset; }
 
-  void insertVariable(std::string str, DataType t) {
-    if (locals.find(str) != locals.end())
-      yyerror("Duplicate declaration");
-    locals[str] = STEntry(VARIABLE, t, offset++);
-  }
+  int getSize() const { return size; }
 
-  void insertFunction(std::string str, DataType t, std::vector<std::tuple<DataType, std::string>> pt) {
-    if (locals.find(str) != locals.end())
-      yyerror("Duplicate declaration");
+  int getScopeNumber() const { return scope_number; }
 
-    std::vector<DataType> paramTypes;
-    for (const auto& tuple : pt) {
-      paramTypes.push_back(std::get<0>(tuple));  // Add the DataType field to paramTypes
-    }
-    locals[str] = STEntry(FUNCTION, t, offset++, paramTypes);
-  }
+  void incrementSize(int s) { size += s; }
 
-  void insertParam(std::string str, DataType t, bool ref) {
-    if (locals.find(str) != locals.end())
-      yyerror("Duplicate declaration");
-    locals[str] = STEntry(PARAM, t, offset++, ref);
-  }
-
-  int get_offset() {
-    return offset;
-  }
-
- private:
-  std::map<std::string, STEntry> locals;
+private:
   int offset;
+  int scope_number;
+  int size;
 };
 
 class SymbolTable {
- public:
+public:
+  SymbolTable(int c = 1001) {
+    hash_table = new HashTable(c);
+  }
+
+  // ~SymbolTable() {
+  //   delete hash_table;
+  // }
+
+  void display() {
+    hash_table->displayHash();
+  }
+
+  /*
+  * Will return nullptr if there is no entry
+  * with the given name in the symbol table
+  */
   STEntry *lookup(std::string str) {
-    for (auto s = scopes.rbegin(); s != scopes.rend(); ++s) {
-      STEntry *e = s->lookup(str);
-      if (e != nullptr) return e;
+    int index = hash_table->hashFunction(str);
+    for(auto entry = hash_table->entries[index].begin(); entry != hash_table->entries[index].end(); entry++) {
+      if (entry->name == str) return &(*entry);
     }
-    yyerror("Identifier not found");
     return nullptr;
   }
-  void insertToStVariable(std::string str, DataType t) {
-    scopes.back().insertVariable(str, t);
-  }
-  void insertToStFunction(std::string str, DataType t, std::vector<std::tuple<DataType, std::string>> pt) {
-    scopes.back().insertFunction(str, t, pt);
 
+  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types) {
+    STEntry *previous_entry = lookup(str);
+    int num = scopes.back().getScopeNumber();
+    if (previous_entry != nullptr && previous_entry->scope_number == num) {
+      yyerror("Duplicate declaration"); 
+    }
+    STEntryFunction *entry = new STEntryFunction(rettype, param_types);
+    entry->name = str;
+    entry->scope_number = num;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
+    hash_table->insertItem(entry);
+    entry->printEntry();
+    scopes.back().incrementSize(1);
   }
-  void insertToStFunParam(std::string str, DataType t, std::vector<std::tuple<std::string, DataType>> pt) {
-    for(const auto& tuple :pt) {
-      scopes.back().insertParam(std::get<0>(tuple), std::get<1>(tuple), false);
-    }   
+
+  void insert_variable(std::string str, DataType type, std::vector<int> dimensions) {
+    STEntry *previous_entry = lookup(str);
+    int num = scopes.back().getScopeNumber();
+    if (previous_entry != nullptr && previous_entry->scope_number == num) { 
+      yyerror("Duplicate declaration"); 
+    }
+    STEntryVariable *entry = new STEntryVariable(type, dimensions);
+    entry->name = str;
+    entry->scope_number = num;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
+    hash_table->insertItem(entry);
+    entry->printEntry();
+    scopes.back().incrementSize(1);
   }
-  
-  void push_scope() {
-    int o = scopes.empty() ? 0 : scopes.back().get_offset();
-    scopes.push_back(Scope(o));
+
+  void insert_param(std::string str, DataType type, PassingType passing_type, std::vector<int> dimensions, bool missing_first_dimension) {
+    STEntry *previous_entry = lookup(str);
+    int num = scopes.back().getScopeNumber();
+    if (previous_entry != nullptr && previous_entry->scope_number == num) { 
+      yyerror("Duplicate declaration"); 
+    }
+    STEntryParam *entry = new STEntryParam(type, passing_type, dimensions, missing_first_dimension);
+    entry->name = str;
+    entry->scope_number = num;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
+    hash_table->insertItem(entry);
+    entry->printEntry();
+    scopes.back().incrementSize(1);
   }
-  void pop_scope() {
+
+  void openScope() {
+    int ofs = 0, number = 1;
+    if(!scopes.empty()) {
+      ofs = scopes.back().getOffset();
+      number = scopes.back().getScopeNumber() + 1;
+    }
+    scopes.push_back(Scope(ofs, number));
+    std::cout << "Opening scope: " << number << std::endl;
+  }
+
+  // TODO: implement this
+  void closeScope() {
+    int current = scopes.back().getScopeNumber();
+    std::cout << "closing scope " << current << std::endl;
+    hash_table->deleteScope(current);
     scopes.pop_back();
   }
 
- private:
+  int not_exists_scope() {
+    return scopes.empty();
+  }
+
+private:
   std::vector<Scope> scopes;
+  HashTable *hash_table;
 };
 
 extern SymbolTable st;
