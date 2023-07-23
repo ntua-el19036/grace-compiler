@@ -3,9 +3,15 @@ fun main () : nothing
 
     fun petros(ref a: char[][1] ; b : int) : int 
         var p : char[10];
-    {}
+        var ouzan : int;
+    {
+        x <- ouzan+(-petros());
+    }
 
     fun apostolos() : char;
 
     var y : char;
-{}
+    var z : char;
+{
+
+}

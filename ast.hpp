@@ -31,6 +31,25 @@ inline std::ostream &operator<<(std::ostream &out, DataType t) {
 class Expr: public AST {
 public:
   virtual int eval() const = 0;
+
+  virtual void type_check(DataType t) {
+    sem();
+    if(type != t) {
+      yyerror("Type mismatch");
+    }
+  }
+
+  DataType get_type() const {
+    return type;
+  }
+
+  EntryKind get_kind() const {
+    return kind;
+  }
+
+protected:
+  DataType type;
+  EntryKind kind;
 };
 
 class Stmt: public AST {
@@ -73,6 +92,10 @@ public:
     return num;
   }
 
+  virtual void sem() override {
+    type = DataType::TYPE_int;
+  }
+
 private:
     int num;
 };
@@ -85,6 +108,10 @@ public:
   }
   virtual int eval() const override {
     return charval;
+  }
+
+  virtual void sem() override {
+    type = DataType::TYPE_char;
   }
 
 private:
@@ -101,6 +128,17 @@ public:
     // TODO: implement
   virtual int eval() const override {
     return 0;
+  }
+
+  virtual void sem() override {
+    std::cout<<"looking up "<<*var<<std::endl;
+    STEntry *entry = st.lookup(*var);
+    if (entry == nullptr) {
+      yyerror("Variable not declared");
+    }
+    std::cout<<"entry kind: " << entry->kind << std::endl;
+    type = entry->type;
+    kind = entry->kind;
   }
 
 private:
@@ -168,6 +206,12 @@ public:
   virtual int eval() const override {
     return 0;
   }
+
+  virtual void sem() override {
+    for (const auto &e : expressions) {
+      e->sem();
+    }
+  }
 };
 
 class FunctionCall: public Expr, public Stmt {
@@ -192,6 +236,17 @@ public:
     return ;
   }
 
+  virtual void sem() override {
+    STEntry *entry = st.lookup(*id);
+    if (entry == nullptr) {
+      yyerror("Function not declared");
+    }
+    if (entry->kind != EntryKind::FUNCTION) {
+      yyerror("Not a function");
+    }
+    type = entry->type;
+  }
+
 private:
   std::string *id;
   ExpressionList *args;
@@ -206,6 +261,14 @@ public:
   }
   virtual int eval() const override {
     return -(expr->eval());
+  }
+
+  virtual void sem() override {
+    expr->sem();
+    type = expr->get_type();
+    if(expr->get_kind() == EntryKind::FUNCTION) {
+      yyerror("Cannot negate a function");
+    }
   }
 
 private:
@@ -241,6 +304,24 @@ public:
         }
         return 0;  // this will never be reached
     }
+
+    // TODO: maybe check to see if operands are ints only
+    // otherwise we allow char operations
+    virtual void sem() override {
+      left->sem();
+      right->sem();
+      if(left->get_kind() == EntryKind::FUNCTION) {
+        yyerror("left operand cannot be a function");
+      }
+      if(right->get_kind() == EntryKind::FUNCTION) {
+        yyerror("right operand cannot be a function");
+      }
+      if(left->get_type() != right->get_type()) {
+          yyerror("Type mismatch");
+      }
+      type = left->get_type();
+    }
+
 private:
     Expr *left;
     char op;
@@ -279,6 +360,10 @@ public:
     }
     void run() const override {
         for(Stmt *s : stmt_list) s->run();
+    }
+
+    virtual void sem() override {
+        for(Stmt *s : stmt_list) s->sem();
     }
 
 private:
@@ -342,6 +427,22 @@ public:
 
     // TODO: implement
   void run() const override {
+  }
+
+  virtual void sem() override {
+    l_value->sem();
+    expr->sem();
+    if(l_value->get_kind() == EntryKind::FUNCTION) {
+      yyerror("Cannot assign to a function");
+    }
+    if(expr->get_kind() == EntryKind::FUNCTION) {
+      yyerror("Cannot assign a function");
+    }
+    std::cout<<"l_value type: "<<l_value->get_type()<<std::endl;
+    std::cout<<"expr type: "<<expr->get_type()<<std::endl;
+    if(l_value->get_type() != expr->get_type()) {
+      yyerror("Type mismatch");
+    }
   }
 
 private:
@@ -629,11 +730,12 @@ public:
       st.openScope();
       header->register_param_list();
       definition_list->sem();
-      std::cout<<"Before end of scope"<<std::endl;
-      st.display();
+      block->sem();
+      // std::cout<<"Before end of scope"<<std::endl;
+      // st.display();
       st.closeScope();
-      std::cout<<"After end of scope"<<std::endl;
-      st.display();
+      // std::cout<<"After end of scope"<<std::endl;
+      // st.display();
   }
 
 private:

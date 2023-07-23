@@ -11,15 +11,21 @@ extern void yyerror(const char *msg);
 
 enum PassingType { BY_VALUE, BY_REFERENCE };
 enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
-enum EntryKind { FUNCTION, VARIABLE, PARAM}; //unused
+enum EntryKind { FUNCTION = 1, VARIABLE, PARAM};
 
 class STEntry {
 public:
-
   int offset;
   std::string name;
   int scope_number;
   int hash_value;
+  EntryKind kind;
+
+  DataType type;
+  std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> paramTypes;
+  std::vector<int> dimensions;
+  PassingType passingType;
+  bool missingFirstDimension;
 
   std::string TypeName[3] = { "int", "char", "nothing" };
   std::string PassingTypeName[2] = { "by value", "by reference" };
@@ -31,12 +37,9 @@ public:
 
 class STEntryFunction : public STEntry {
 public:  
-  DataType returnType;
-  std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> paramTypes;
-
   virtual void printEntry() const override {
     std::cout << "name: " << name << std::endl;
-    std::cout << "return type: " << TypeName[returnType] << std::endl;
+    std::cout << "return type: " << TypeName[type] << std::endl;
     if(paramTypes.empty()) { std::cout << "no parameters" << std::endl; return; }
     std::cout << "param types: ";
     for (auto x : paramTypes) {
@@ -50,16 +53,22 @@ public:
     }
     std::cout << std::endl;
   }
-  STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> pt) :
-    returnType(rt), paramTypes(pt) {}  
+
+  STEntryFunction(DataType rt, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> pt) { 
+    type = rt;
+    paramTypes = pt;
+    kind = EntryKind::FUNCTION;
+  }  
 };
 
 class STEntryVariable : public STEntry {
 public:
-  DataType type;
-  std::vector<int> dimensions;
 
-  STEntryVariable(DataType t, std::vector<int> d) : type(t), dimensions(d) {}
+  STEntryVariable(DataType t, std::vector<int> d) { 
+    type = t;
+    dimensions = d;
+    kind = EntryKind::VARIABLE;
+  }
 
   virtual void printEntry() const override {
     std::cout << "name: " << name << std::endl;
@@ -71,20 +80,21 @@ public:
     std::cout << std::endl;
   }
 
-  DataType getType() const { return type; }
+  DataType getType() const { return type; } // not used
 
   // void setName(std::string str) { name = str; }
 };
 
 class STEntryParam : public STEntry {
 public:
-  DataType type;
-  PassingType passingType;
-  std::vector<int> dimensions;
-  bool missingFirstDimension;
 
-  STEntryParam(DataType t, PassingType pt, std::vector<int> d, bool m) : type(t),
-    passingType(pt), dimensions(d), missingFirstDimension(m) {}
+  STEntryParam(DataType t, PassingType pt, std::vector<int> d, bool m) {
+    type = t;
+    passingType = pt;
+    dimensions = d;
+    missingFirstDimension = m;
+    kind = EntryKind::PARAM;
+  }
 
   virtual void printEntry() const override {
     std::cout << "name: " << name << std::endl;
@@ -184,7 +194,10 @@ public:
   STEntry *lookup(std::string str) {
     int index = hash_table->hashFunction(str);
     for(auto entry = hash_table->entries[index].begin(); entry != hash_table->entries[index].end(); entry++) {
-      if (entry->name == str) return &(*entry);
+      if (entry->name == str) {
+        std::cout << "found " << str << " of kind " << entry->kind << std::endl;
+        return &(*entry);
+      }
     }
     return nullptr;
   }
@@ -200,7 +213,7 @@ public:
     entry->scope_number = num;
     // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
-    entry->printEntry();
+    // entry->printEntry();
     scopes.back().incrementSize(1);
   }
 
@@ -215,7 +228,7 @@ public:
     entry->scope_number = num;
     // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
-    entry->printEntry();
+    // entry->printEntry();
     scopes.back().incrementSize(1);
   }
 
@@ -230,7 +243,7 @@ public:
     entry->scope_number = num;
     // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
-    entry->printEntry();
+    // entry->printEntry();
     scopes.back().incrementSize(1);
   }
 
