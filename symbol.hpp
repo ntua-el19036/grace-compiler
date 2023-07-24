@@ -9,8 +9,8 @@
 
 extern void yyerror(const char *msg);
 
-enum PassingType { BY_VALUE, BY_REFERENCE };
-enum DataType { TYPE_int, TYPE_char, TYPE_nothing };
+enum PassingType { BY_VALUE = 1, BY_REFERENCE };
+enum DataType { TYPE_int = 1, TYPE_char, TYPE_nothing };
 enum EntryKind { FUNCTION = 1, VARIABLE, PARAM};
 
 class STEntry {

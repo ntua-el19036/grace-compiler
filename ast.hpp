@@ -32,13 +32,13 @@ class Expr: public AST {
 public:
   virtual int eval() const = 0;
 
-  void type_check(DataType t, std::vector<int> dim) {
+  void type_check(DataType t, std::vector<int> dim = {}) {
     if(type != t) {
       yyerror("Type mismatch");
     }
     if(dimensions != dim) {
       if(dimensions.empty() || dim.empty()) {
-        yyerror("Array dimension mismatch");
+        yyerror("Type mismatch, array and non-array");
       }
       if(dimensions[0] == 0 || dim[0] == 0) {
         //the first dimension of either is unknown, so compare the rest
@@ -47,6 +47,9 @@ public:
             yyerror("Array dimension mismatch");
           }
         }
+      }
+      else {
+        yyerror("Array dimension mismatch");
       }
     }
   }
@@ -73,31 +76,31 @@ class Stmt: public AST {
 public:
   virtual void run() const = 0;
 };
+// unused
+// class VarDecl: public Stmt {
+// public:
+//     VarDecl(const std::string &s, DataType t): var(s), datatype(t) {}
 
-class VarDecl: public Stmt {
-public:
-    VarDecl(const std::string &s, DataType t): var(s), datatype(t) {}
+//     void printOn(std::ostream &out) const override {
+//         out << "VarDecl(" << var << ": " << datatype << ")";
+//   }
+// private:
+//   std::string var;
+//   DataType datatype;
+// };
 
-    void printOn(std::ostream &out) const override {
-        out << "VarDecl(" << var << ": " << datatype << ")";
-  }
-private:
-  std::string var;
-  DataType datatype;
-};
+// class FunDecl: public Stmt {
+// public:
+//     FunDecl(const std::string &s, DataType t, std::vector<std::tuple<DataType, std::string>>  p): var(s), rettype(t), params(p) {}
 
-class FunDecl: public Stmt {
-public:
-    FunDecl(const std::string &s, DataType t, std::vector<std::tuple<DataType, std::string>>  p): var(s), rettype(t), params(p) {}
-
-    void printOn(std::ostream &out) const override {
-        out << "FunDecl(" << var << ": " << rettype << ")";
-  }
-private:
-  std::string var;
-  DataType rettype;
-  std::vector<std::tuple<DataType, std::string>> params;
-};
+//     void printOn(std::ostream &out) const override {
+//         out << "FunDecl(" << var << ": " << rettype << ")";
+//   }
+// private:
+//   std::string var;
+//   DataType rettype;
+//   std::vector<std::tuple<DataType, std::string>> params;
+// };
 
 class IntConst: public Expr {
 public:
@@ -183,6 +186,11 @@ public:
     return 0;
   }
 
+  virtual void sem() override {
+    type = DataType::TYPE_char;
+    dimensions.push_back(stringval->length()+1);
+  }
+
 private:
     std::string* stringval;
 };
@@ -200,6 +208,25 @@ public:
   virtual int eval() const override {
     return 0;
   }
+
+  virtual void sem() override {
+    object->sem();
+    position->sem();
+    if(object->get_kind() == EntryKind::FUNCTION) {
+      yyerror("Cannot index a function");
+    }
+    if(position->get_kind() == EntryKind::FUNCTION) {
+      yyerror("Cannot index with a function");
+    }
+    position->type_check(DataType::TYPE_int);
+    if(object->get_dimensions().empty()) {
+      yyerror("Cannot index a non-array");
+    }
+    type = object->get_type();
+    dimensions = object->get_dimensions();
+    dimensions.erase(dimensions.begin());
+  }
+    
 
 private:
   Expr* object;
@@ -363,7 +390,7 @@ public:
     }
 
 private:
-        Expr *cond;
+        Expr *cond; 
 };
 
 class Block: public Stmt {
