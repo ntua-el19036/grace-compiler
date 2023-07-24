@@ -32,10 +32,22 @@ class Expr: public AST {
 public:
   virtual int eval() const = 0;
 
-  virtual void type_check(DataType t) {
-    sem();
+  void type_check(DataType t, std::vector<int> dim) {
     if(type != t) {
       yyerror("Type mismatch");
+    }
+    if(dimensions != dim) {
+      if(dimensions.empty() || dim.empty()) {
+        yyerror("Array dimension mismatch");
+      }
+      if(dimensions[0] == 0 || dim[0] == 0) {
+        //the first dimension of either is unknown, so compare the rest
+        for(unsigned int i = 1; i < dimensions.size(); i++) {
+          if(dimensions[i] != dim[i]) {
+            yyerror("Array dimension mismatch");
+          }
+        }
+      }
     }
   }
 
@@ -47,9 +59,14 @@ public:
     return kind;
   }
 
+  std::vector<int> get_dimensions() const {
+    return dimensions;
+  }
+
 protected:
   DataType type;
   EntryKind kind;
+  std::vector<int> dimensions;
 };
 
 class Stmt: public AST {
@@ -137,6 +154,12 @@ public:
       yyerror("Variable not declared");
     }
     std::cout<<"entry kind: " << entry->kind << std::endl;
+    if(!entry->dimensions.empty()) {
+      dimensions = entry->dimensions;
+    }
+    if(entry->missingFirstDimension) {
+      dimensions.insert(dimensions.begin(), 0);
+    }
     type = entry->type;
     kind = entry->kind;
   }
@@ -316,10 +339,10 @@ public:
       if(right->get_kind() == EntryKind::FUNCTION) {
         yyerror("right operand cannot be a function");
       }
-      if(left->get_type() != right->get_type()) {
-          yyerror("Type mismatch");
-      }
+      left->type_check(right->get_type(), right->get_dimensions());
       type = left->get_type();
+      if(left->get_dimensions().front() == 0) dimensions = right->get_dimensions();
+      else dimensions = left->get_dimensions(); 
     }
 
 private:
@@ -440,9 +463,7 @@ public:
     }
     std::cout<<"l_value type: "<<l_value->get_type()<<std::endl;
     std::cout<<"expr type: "<<expr->get_type()<<std::endl;
-    if(l_value->get_type() != expr->get_type()) {
-      yyerror("Type mismatch");
-    }
+    l_value->type_check(expr->get_type(), expr->get_dimensions());
   }
 
 private:

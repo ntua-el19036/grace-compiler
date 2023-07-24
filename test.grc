@@ -1,11 +1,14 @@
 fun main () : nothing 
-    var x : int[1][2][3];
+    var x1 : int[1];
+    var x2 : int[1][2][3];
+    var x3 : char[5][1];
 
-    fun petros(ref a: char[][1] ; b : int) : int 
+    fun petros(ref a: char[][1] ; b : int[]) : int 
         var p : char[10];
         var ouzan : int;
     {
-        x <- ouzan+(-petros());
+        b <- x1;
+        x3 <- a + x3;
     }
 
     fun apostolos() : char;
