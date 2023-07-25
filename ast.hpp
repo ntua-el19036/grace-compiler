@@ -218,7 +218,7 @@ public:
     if(position->get_kind() == EntryKind::FUNCTION) {
       yyerror("Cannot index with a function");
     }
-    position->type_check(DataType::TYPE_int);
+    position->type_check(DataType::TYPE_int); // maybe not needed
     if(object->get_dimensions().empty()) {
       yyerror("Cannot index a non-array");
     }
@@ -316,6 +316,7 @@ public:
   virtual void sem() override {
     expr->sem();
     type = expr->get_type();
+    dimensions = expr->get_dimensions();
     if(expr->get_kind() == EntryKind::FUNCTION) {
       yyerror("Cannot negate a function");
     }
@@ -368,7 +369,7 @@ public:
       }
       left->type_check(right->get_type(), right->get_dimensions());
       type = left->get_type();
-      if(left->get_dimensions().front() == 0) dimensions = right->get_dimensions();
+      if(left->get_dimensions().empty() || left->get_dimensions().front() == 0) dimensions = right->get_dimensions();
       else dimensions = left->get_dimensions(); 
     }
 
@@ -387,6 +388,13 @@ public:
     }
     virtual int eval() const override {
         return !(cond->eval());
+    }
+
+    virtual void sem() override {
+      cond->sem();
+      // if(cond->get_kind() == EntryKind::FUNCTION) {
+      //   yyerror("Cannot negate a function");
+      // }
     }
 
 private:
@@ -434,6 +442,12 @@ public:
             stmt1->run();
         else
             stmt2->run();
+    }
+
+    virtual void sem() override {
+        cond->sem();
+        stmt1->sem();
+        if(stmt2 != nullptr) stmt2->sem();
     }
 
 private:

@@ -8,7 +8,7 @@ fun main () : nothing
         var ouzan : int;
         var c : char;
     {
-        $b <- x1;
+        ouzan <- 1+2;
         $x3 <- a + x3;
     }
 
@@ -17,5 +17,5 @@ fun main () : nothing
     var y : char;
     var z : char;
 {
-    x1[19] <- x2[9][petros()][0];
+    if(z<y) then y<-'1'; else y<-'b';
 }
