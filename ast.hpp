@@ -533,6 +533,20 @@ public:
     if(expr != nullptr) out << *expr;      
     out << ")";
   }
+
+  virtual void sem() override {
+    if(expr == nullptr) {
+      if(st.get_return_type() != DataType::TYPE_nothing) {
+        yyerror("Type mismatch");
+      }
+    }
+    else {
+      expr->sem();
+      expr->type_check(st.get_return_type());
+    }
+
+  }
+
 private:
 Expr *expr;
 };
@@ -701,6 +715,10 @@ public:
     }
   }
 
+  DataType get_return_type() const {
+    return returntype;
+  }
+
 private:
   std::string *id;
   DataType returntype;
@@ -796,7 +814,7 @@ public:
   virtual void sem() override {
       if(st.not_exists_scope()) st.openScope(); 
       header->sem();
-      st.openScope();
+      st.openScope(header->get_return_type());
       header->register_param_list();
       definition_list->sem();
       block->sem();

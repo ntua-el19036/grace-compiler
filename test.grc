@@ -10,6 +10,7 @@ fun main () : nothing
     {
         ouzan <- 1+2;
         $x3 <- a + x3;
+        return ouzan;
     }
 
     fun apostolos() : char;
@@ -22,4 +23,5 @@ fun main () : nothing
     while(1#2) do {
         y <- 'a';
     }
+    return;
 }

@@ -157,7 +157,7 @@ public:
 
 class Scope {
 public:
-  Scope(int o = -1, int n = 1) : offset(o), scope_number(n), size(0) {}
+  Scope(int o = -1, int n = 1, DataType rt = DataType::TYPE_nothing) : offset(o), scope_number(n), size(0), return_type(rt) {}
 
   int getOffset() const { return offset; }
 
@@ -167,10 +167,15 @@ public:
 
   void incrementSize(int s) { size += s; }
 
+  DataType get_return_type() {
+    return return_type;
+  }
+
 private:
   int offset;
   int scope_number;
   int size;
+  DataType return_type;
 };
 
 class SymbolTable {
@@ -247,13 +252,13 @@ public:
     scopes.back().incrementSize(1);
   }
 
-  void openScope() {
+  void openScope(DataType return_type = DataType::TYPE_nothing) {
     int ofs = 0, number = 1;
     if(!scopes.empty()) {
       ofs = scopes.back().getOffset();
       number = scopes.back().getScopeNumber() + 1;
     }
-    scopes.push_back(Scope(ofs, number));
+    scopes.push_back(Scope(ofs, number, return_type));
     std::cout << "Opening scope: " << number << std::endl;
   }
 
@@ -267,6 +272,10 @@ public:
 
   int not_exists_scope() {
     return scopes.empty();
+  }
+
+  DataType get_return_type() {
+    return scopes.back().get_return_type();
   }
 
 private:
