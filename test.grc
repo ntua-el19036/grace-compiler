@@ -13,15 +13,17 @@ fun main () : nothing
         return ouzan;
     }
 
-    fun apostolos() : char;
+    fun apostolos() : char {}
 
     var y : char;
     var z : char;
-    $ var y : int;
+    var p : int;
 {
     if(z<y) then y<-'1'; else y<-'b';
     while(1#2) do {
         y <- 'a';
     }
     return;
+    y <- apostolos(p);
+
 }

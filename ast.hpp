@@ -295,6 +295,24 @@ public:
       yyerror("Not a function");
     }
     type = entry->type;
+    if(args == nullptr) {
+      if(!entry->paramTypes.empty()) {
+        yyerror("No arguments provided");
+      }
+    }
+    else {
+      if(entry->paramTypes.size() != args->expressions.size()) {
+        yyerror("Wrong number of arguments");
+      }
+      std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>>::iterator param_it = entry->paramTypes.begin();
+      for (const auto &e : args->expressions) {
+        e->sem();
+        std::vector<int> param_dimensions = std::get<2>(*param_it);
+        if(std::get<3>(*param_it)) param_dimensions.insert(param_dimensions.begin(), 0);
+        e->type_check(std::get<0>(*param_it), param_dimensions);
+        ++param_it;
+      }
+    }
   }
 
 private:
