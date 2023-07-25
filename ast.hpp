@@ -467,6 +467,11 @@ public:
     while(cond->eval()) stmt->run();
   }
 
+  virtual void sem() override {
+    cond->sem();
+    stmt->sem();
+  }
+
 private:
     Expr *cond;
     Stmt *stmt;
@@ -479,6 +484,8 @@ public:
     out << "EmptyStmt()";
   }
   void run() const override {}
+
+  virtual void sem() override {} // idk if this is needed
 };
 
 class Assignment: public Stmt {
