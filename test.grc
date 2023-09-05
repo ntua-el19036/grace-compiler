@@ -18,12 +18,14 @@ fun main () : nothing
     var y : char;
     var z : char;
     var p : int;
+    $$
+    $$
 {
     if(z<y) then y<-'1'; else y<-'b';
     while(1#2) do {
         y <- 'a';
     }
     return;
-    y <- apostolos(p);
+    y <- petros(y);
 
 }

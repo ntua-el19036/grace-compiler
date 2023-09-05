@@ -8,13 +8,15 @@
 #include <cstdlib>
 #include "lexer.hpp"
 #include "parser.hpp"
+
+int mylineno = 1;
 %}
 
 %option yylineno
 
 L [a-zA-Z]
 D [0-9]
-W [ \t\n\r]
+W [ \t\r]
 COMMONCHAR [ \!\#-\&\(-\[\]-\~]
 ESCAPESEQ \\[ntr0\\\'\"]
 HEX \\x[0-9a-fA-f][0-9a-fA-f]
@@ -53,12 +55,18 @@ HEX \\x[0-9a-fA-f][0-9a-fA-f]
 [\+\-\*\=\#\<\>\(\)\[\]\{\}\,\;\:] { yylval.op = yytext[0]; return yytext[0]; }
 
 {W}+ { /* nothing */ }
-\$[^\$].*\n { /* single line comment - nothing */ }
-\$\$([^\$]+|\$[^\$])*\$\$ { /* multiple line comment - nothing */ }
+\n { mylineno++; }
+\$[^\$].*\n { mylineno++; /* single line comment - nothing */}
+\$\$([^\$]+|\$[^\$])*\$\$ { mylineno = yylineno; /* multiple line comment - nothing */ }
 
 . { yyerror("Illegal character"); }
 
 %%
+
+void yyerror2(const char* msg, int lineno) {
+    fprintf(stderr, "Error at line %d: %s\n", lineno, msg);
+    exit(1);
+}
 
 void yyerror(const char* msg) {
     fprintf(stderr, "Error at line %d:\n%s\n", yylineno, msg);

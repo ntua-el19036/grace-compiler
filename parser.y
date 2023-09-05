@@ -8,6 +8,7 @@
 #include "lexer.hpp"
 #include "ast.hpp"
 
+extern int mylineno;
 SymbolTable st;
 %}
 
@@ -177,7 +178,7 @@ expr_list:
 ;
 
 func_call:
-  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3); }
+  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3, mylineno); }
 | T_id '(' ')' { $$ = new FunctionCall($1); }
 ;
 

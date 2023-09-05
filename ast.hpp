@@ -6,6 +6,7 @@
 #include "symbol.hpp"
 #include <memory>
 
+extern void yyerror2(const char *msg, int line_number);
 
 class AST {
 public:
@@ -31,6 +32,8 @@ inline std::ostream &operator<<(std::ostream &out, DataType t) {
 class Expr: public AST {
 public:
   virtual int eval() const = 0;
+
+  int line_number;
 
   void type_check(DataType t, std::vector<int> dim = {}) {
     if(type != t) {
@@ -266,7 +269,9 @@ public:
 
 class FunctionCall: public Expr, public Stmt {
 public:
-  FunctionCall(std::string *i, ExpressionList* el = nullptr): id(i), args(el) {}
+  FunctionCall(std::string *i, ExpressionList* el = nullptr, int lineno = 0): id(i), args(el) { 
+    line_number = lineno;
+    }
   ~FunctionCall() { delete id; delete args;}
 
   void printOn(std::ostream &out) const override {
@@ -289,20 +294,20 @@ public:
   virtual void sem() override {
     STEntry *entry = st.lookup(*id);
     if (entry == nullptr) {
-      yyerror("Function not declared");
+      yyerror2("Function not declared", line_number); 
     }
     if (entry->kind != EntryKind::FUNCTION) {
-      yyerror("Not a function");
+      yyerror2("Not a function", line_number);
     }
     type = entry->type;
     if(args == nullptr) {
       if(!entry->paramTypes.empty()) {
-        yyerror("No arguments provided");
+        yyerror2("No arguments provided", line_number);
       }
     }
     else {
       if(entry->paramTypes.size() != args->expressions.size()) {
-        yyerror("Wrong number of arguments");
+        yyerror2("Wrong number of arguments", line_number);
       }
       std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>>::iterator param_it = entry->paramTypes.begin();
       for (const auto &e : args->expressions) {
