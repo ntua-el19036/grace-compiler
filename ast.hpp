@@ -38,22 +38,22 @@ public:
   void type_check(DataType t, std::vector<int> dim = {}) {
     if(type != t) {
       yyerror2("Type mismatch", line_number);
-      yyerror("Type mismatch");
+      //yyerror("Type mismatch");
     }
     if(dimensions != dim) {
       if(dimensions.empty() || dim.empty()) {
-        yyerror("Type mismatch, array and non-array");
+        yyerror2("Type mismatch, array and non-array", line_number);
       }
       if(dimensions[0] == 0 || dim[0] == 0) {
         //the first dimension of either is unknown, so compare the rest
         for(unsigned int i = 1; i < dimensions.size(); i++) {
           if(dimensions[i] != dim[i]) {
-            yyerror("Array dimension mismatch");
+            yyerror2("Array dimension mismatch", line_number);
           }
         }
       }
       else {
-        yyerror("Array dimension mismatch");
+        yyerror2("Array dimension mismatch", line_number);
       }
     }
   }
@@ -108,7 +108,7 @@ public:
 
 class IntConst: public Expr {
 public:
-    IntConst(int n): num(n) {}
+    IntConst(int n, int lineno = 0): num(n) { line_number = lineno; }
     virtual void printOn(std::ostream &out) const override {
     out << "IntConst(" << num << ")";
   }
@@ -126,7 +126,7 @@ private:
 
 class CharConst: public Expr {
 public:
-    CharConst(char c): charval(c) {}
+    CharConst(char c, int lineno = 0): charval(c) { line_number = lineno; }
     virtual void printOn(std::ostream &out) const override {
     out << "CharConst(" << charval << ")";
   }
@@ -158,7 +158,7 @@ public:
     std::cout<<"looking up "<<*var<<std::endl;
     STEntry *entry = st.lookup(*var);
     if (entry == nullptr) {
-      yyerror("Variable not declared");
+      yyerror2("Variable not declared", line_number);
     }
     std::cout<<"entry kind: " << entry->kind << std::endl;
     if(!entry->dimensions.empty()) {
@@ -178,7 +178,7 @@ private:
 
 class StringLiteral: public Expr {
 public:
-  StringLiteral(std::string *s): stringval(s) {}
+  StringLiteral(std::string *s, int lineno = 0): stringval(s) { line_number = lineno; }
   ~StringLiteral() { delete stringval; }
 
   void printOn(std::ostream &out) const override {
@@ -201,7 +201,7 @@ private:
 
 class ArrayAccess: public Expr {
 public:
-  ArrayAccess(Expr* obj, Expr* pos): object(obj), position(pos) {}
+  ArrayAccess(Expr* obj, Expr* pos): object(obj), position(pos) { line_number = obj->line_number; }
   ~ArrayAccess() { delete object; delete position; }
 
   void printOn(std::ostream &out) const override {
@@ -217,14 +217,14 @@ public:
     object->sem();
     position->sem();
     if(object->get_kind() == EntryKind::FUNCTION) {
-      yyerror("Cannot index a function");
+      yyerror2("Cannot index a function", line_number);
     }
     if(position->get_kind() == EntryKind::FUNCTION) {
-      yyerror("Cannot index with a function");
+      yyerror2("Cannot index with a function", line_number);
     }
     position->type_check(DataType::TYPE_int); // maybe not needed
     if(object->get_dimensions().empty()) {
-      yyerror("Cannot index a non-array");
+      yyerror2("Cannot index a non-array", line_number);
     }
     type = object->get_type();
     dimensions = object->get_dimensions();
@@ -329,7 +329,7 @@ private:
 
 class Negative: public Expr {
 public:
-    Negative(Expr *e): expr(e) {}
+    Negative(Expr *e): expr(e) { line_number = e->line_number; }
     ~Negative() { delete expr; }
     virtual void printOn(std::ostream &out) const override {
     out << "Negative(" << *expr << ")";
@@ -343,7 +343,7 @@ public:
     type = expr->get_type();
     dimensions = expr->get_dimensions();
     if(expr->get_kind() == EntryKind::FUNCTION) {
-      yyerror("Cannot negate a function");
+      yyerror2("Cannot negate a function", line_number);
     }
   }
 
@@ -354,7 +354,7 @@ private:
 
 class BinOp: public Expr {
 public:
-    BinOp(Expr *l, char o, Expr *r): left(l), op(o), right(r) {}
+    BinOp(Expr *l, char o, Expr *r): left(l), op(o), right(r) { line_number = l->line_number; }
     ~BinOp() { delete left; delete right; }
 
     virtual void printOn(std::ostream &out) const override {
@@ -387,10 +387,10 @@ public:
       left->sem();
       right->sem();
       if(left->get_kind() == EntryKind::FUNCTION) {
-        yyerror("left operand cannot be a function");
+        yyerror2("left operand cannot be a function", line_number);
       }
       if(right->get_kind() == EntryKind::FUNCTION) {
-        yyerror("right operand cannot be a function");
+        yyerror2("right operand cannot be a function", line_number);
       }
       left->type_check(right->get_type(), right->get_dimensions());
       type = left->get_type();
@@ -529,10 +529,10 @@ public:
     l_value->sem();
     expr->sem();
     if(l_value->get_kind() == EntryKind::FUNCTION) {
-      yyerror("Cannot assign to a function");
+      yyerror2("Cannot assign to a function", l_value->line_number);
     }
     if(expr->get_kind() == EntryKind::FUNCTION) {
-      yyerror("Cannot assign a function");
+      yyerror2("Cannot assign a function", expr->line_number);
     }
     std::cout<<"l_value type: "<<l_value->get_type()<<std::endl;
     std::cout<<"expr type: "<<expr->get_type()<<std::endl;
@@ -547,7 +547,10 @@ private:
 class Return: public Stmt {
 public:
   Return(Expr *e = nullptr): expr(e) {}
+  Return(int lineno = 0): expr(nullptr) { line_number = lineno; }
   ~Return() { delete expr; }
+
+  int line_number = 0;
 
   // TODO: implement
   void run() const override {
@@ -562,7 +565,7 @@ public:
   virtual void sem() override {
     if(expr == nullptr) {
       if(st.get_return_type() != DataType::TYPE_nothing) {
-        yyerror("Type mismatch");
+        yyerror2("Type mismatch", line_number);
       }
     }
     else {

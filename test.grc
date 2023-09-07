@@ -15,11 +15,15 @@ fun main () : nothing
         return ouzan;
     }
 
-    fun apostolos() : char {}
+    fun apostolos() : char {
+        return 'a';
+    }
 
     var y : char;
     var z : char;
     var p : int;
+    var str : char[3];
+    var str2 : char[3];
     $$
     $$
 {
@@ -28,7 +32,7 @@ fun main () : nothing
         y <- 'a';
     }
     return;
-    ;
+    p <- 1;
     y <- apostolos();
     test(p);
 }

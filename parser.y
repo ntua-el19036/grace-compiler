@@ -159,7 +159,7 @@ stmt:
 | "if" cond T_then stmt { $$ = new If($2, $4); }
 | "if" cond T_then stmt T_else stmt { $$ = new If($2, $4, $6); }
 | "while" cond "do" stmt { $$ = new While($2, $4); }
-| "return" ';' { $$ = new Return(); }
+| "return" ';' { $$ = new Return(mylineno); }
 | "return" expr ';' { $$ = new Return($2); }
 ;
 
@@ -189,13 +189,13 @@ func_call_stmt:
 
 l_value:
   T_id { $$ = new Id($1, mylineno); }
-| T_string_literal { $$ = new StringLiteral($1); }
+| T_string_literal { $$ = new StringLiteral($1, mylineno); }
 | l_value '[' expr ']' { $$ = new ArrayAccess($1, $3); }
 ;
 
 expr:
-  T_int_const { $$ = new IntConst($1); }
-| T_char_const { $$ = new CharConst($1); }
+  T_int_const { $$ = new IntConst($1, mylineno); }
+| T_char_const { $$ = new CharConst($1, mylineno); }
 | l_value { $$ = $1; }
 | '(' expr ')' { $$ = $2; }
 | func_call { $$ = $1; }
