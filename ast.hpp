@@ -33,10 +33,11 @@ class Expr: public AST {
 public:
   virtual int eval() const = 0;
 
-  int line_number;
+  int line_number = 0;
 
   void type_check(DataType t, std::vector<int> dim = {}) {
     if(type != t) {
+      yyerror2("Type mismatch", line_number);
       yyerror("Type mismatch");
     }
     if(dimensions != dim) {
@@ -143,7 +144,7 @@ private:
 
 class Id: public Expr {
 public:
-  Id(std::string *s): var(s) {}
+  Id(std::string *s, int lineno = 0): var(s) { line_number = lineno; }
 
   void printOn(std::ostream &out) const override {
     out << "Id(" << *var << ")";
@@ -271,7 +272,8 @@ class FunctionCall: public Expr, public Stmt {
 public:
   FunctionCall(std::string *i, ExpressionList* el = nullptr, int lineno = 0): id(i), args(el) { 
     line_number = lineno;
-    }
+  }
+  FunctionCall(std::string *i, int lineno = 0): id(i) { line_number = lineno; }
   ~FunctionCall() { delete id; delete args;}
 
   void printOn(std::ostream &out) const override {

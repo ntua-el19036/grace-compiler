@@ -179,16 +179,16 @@ expr_list:
 
 func_call:
   T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3, mylineno); }
-| T_id '(' ')' { $$ = new FunctionCall($1); }
+| T_id '(' ')' { $$ = new FunctionCall($1, mylineno); }
 ;
 
 func_call_stmt:
-  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3); }
-| T_id '(' ')' { $$ = new FunctionCall($1); }
+  T_id '(' expr_list ')' { $$ = new FunctionCall($1, $3, mylineno); }
+| T_id '(' ')' { $$ = new FunctionCall($1, mylineno); }
 ;
 
 l_value:
-  T_id { $$ = new Id($1); }
+  T_id { $$ = new Id($1, mylineno); }
 | T_string_literal { $$ = new StringLiteral($1); }
 | l_value '[' expr ']' { $$ = new ArrayAccess($1, $3); }
 ;
