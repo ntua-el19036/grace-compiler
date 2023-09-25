@@ -123,7 +123,7 @@ public:
   void insertItem(STEntry *entry) {
     int index = hashFunction(entry->name);
     entry->hash_value = index;
-    std::cout << "inserting " << entry->name << " at index " << index << std::endl;
+    // std::cout << "inserting " << entry->name << " at index " << index << std::endl;
     entries[index].push_front(*entry);
   }
 
@@ -131,7 +131,7 @@ public:
     for (int i = 0; i < capacity; i++) {
       if(entries[i].empty()) continue;
       for(std::list<STEntry>::iterator it = entries[i].begin(); it != entries[i].end(); it++) {
-        std::cout << "deleting " << it->name << " at " << i << std::endl;
+        // std::cout << "deleting " << it->name << " at " << i << std::endl;
         if (it->scope_number == scope_number) {
           it = entries[i].erase(it);
         }
@@ -200,7 +200,7 @@ public:
     int index = hash_table->hashFunction(str);
     for(auto entry = hash_table->entries[index].begin(); entry != hash_table->entries[index].end(); entry++) {
       if (entry->name == str) {
-        std::cout << "found " << str << " of kind " << entry->kind << std::endl;
+        // std::cout << "found " << str << " of kind " << entry->kind << std::endl;
         return &(*entry);
       }
     }
@@ -259,13 +259,13 @@ public:
       number = scopes.back().getScopeNumber() + 1;
     }
     scopes.push_back(Scope(ofs, number, return_type));
-    std::cout << "Opening scope: " << number << std::endl;
+    // std::cout << "Opening scope: " << number << std::endl;
   }
 
   // TODO: implement this
   void closeScope() {
     int current = scopes.back().getScopeNumber();
-    std::cout << "closing scope " << current << std::endl;
+    // std::cout << "closing scope " << current << std::endl;
     hash_table->deleteScope(current);
     scopes.pop_back();
   }

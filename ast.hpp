@@ -6,6 +6,16 @@
 #include "symbol.hpp"
 #include <memory>
 
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Value.h>
+#include <llvm/IR/Verifier.h>
+
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Utils.h>
+
 extern void yyerror2(const char *msg, int line_number);
 
 class AST {
@@ -13,6 +23,7 @@ public:
   virtual ~AST() {}
   virtual void printOn(std::ostream &out) const = 0;
   virtual void sem() {}
+  // virtual llvm::Value *codegen();
 };
 
 inline std::ostream& operator<< (std::ostream &out, const AST &t) {
@@ -155,12 +166,12 @@ public:
   }
 
   virtual void sem() override {
-    std::cout<<"looking up "<<*var<<std::endl;
+    // std::cout<<"looking up "<<*var<<std::endl;
     STEntry *entry = st.lookup(*var);
     if (entry == nullptr) {
       yyerror2("Variable not declared", line_number);
     }
-    std::cout<<"entry kind: " << entry->kind << std::endl;
+    // std::cout<<"entry kind: " << entry->kind << std::endl;
     if(!entry->dimensions.empty()) {
       dimensions = entry->dimensions;
     }
@@ -534,8 +545,8 @@ public:
     if(expr->get_kind() == EntryKind::FUNCTION) {
       yyerror2("Cannot assign a function", expr->line_number);
     }
-    std::cout<<"l_value type: "<<l_value->get_type()<<std::endl;
-    std::cout<<"expr type: "<<expr->get_type()<<std::endl;
+    // std::cout<<"l_value type: "<<l_value->get_type()<<std::endl;
+    // std::cout<<"expr type: "<<expr->get_type()<<std::endl;
     l_value->type_check(expr->get_type(), expr->get_dimensions());
   }
 
@@ -672,6 +683,10 @@ public:
     st.insert_param(*id, param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
   }
 
+  // virtual llvm::Value *codegen() override {
+  //   return nullptr;
+  // }
+
 private:
   std::string *id;
   VariableType *param_type;
@@ -769,6 +784,11 @@ public:
   virtual void sem() override {
     st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions());
   }
+
+  // virtual llvm::Value *codegen() override {
+  //   return nullptr;
+  // }
+
 private:
   std::string *id;
   VariableType *variable_type;
@@ -853,6 +873,20 @@ public:
       // st.display();
   }
 
+  /*virtual llvm::Value *codegen() override {
+    std::cout << "Generating code for function " << *header << std::endl;
+    return nullptr;
+    // llvm::Function *function = st.get_function(header->get_return_type());
+    // llvm::BasicBlock *basic_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", function);
+    // llvm::IRBuilder<> builder(basic_block);
+    // st.openScope(header->get_return_type());
+    // header->register_param_list();
+    // definition_list->sem();
+    // block->sem();
+    // st.closeScope();
+    // return function;
+    }
+*/
 private:
   Header *header;
   LocalDefinitionList *definition_list;
