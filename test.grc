@@ -1,4 +1,4 @@
-fun main () : nothing 
+$$ fun main () : nothing 
     var x1 : int[1];
     var x2 : int[1][2][3];
     var x3 : char[5][1];
@@ -24,8 +24,7 @@ fun main () : nothing
     var p : int;
     var str : char[3];
     var str2 : char[3];
-    $$
-    $$
+    
 {
     if(z<y) then y<-'1'; else y<-'b';
     while(1#2) do {
@@ -35,4 +34,19 @@ fun main () : nothing
     p <- 1;
     y <- apostolos();
     test(p);
+} $$
+
+fun mymain(y,z : int[2]; k:char) : int
+    fun nested() : nothing
+    {
+        return;
+    }
+    var x: int;
+    var a: int;
+    var b: int;
+{
+    x <- 1;
+    a <- 2;
+    b <- a + x;
+    return b;
 }

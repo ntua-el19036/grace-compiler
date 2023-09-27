@@ -17,7 +17,7 @@ parser.cpp parser.hpp: parser.y
 
 parser.o: parser.cpp lexer.hpp ast.hpp symbol.hpp 
 
-compiler: lexer.o parser.o
+compiler: lexer.o parser.o ast.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:

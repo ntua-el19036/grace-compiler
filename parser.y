@@ -85,7 +85,7 @@ program:
     std::cout << "AST: " << *$1 << std::endl;
     //delete $1;
     $1->sem();
-    //$1->codegen();
+    $1->llvm_compile_and_dump();
     }
 ;
 

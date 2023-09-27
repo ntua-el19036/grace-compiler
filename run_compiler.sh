@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Step 1: Clean the project
-make clean
+make distclean
 
 # Step 2: Build the compiler
 make compiler
