@@ -1228,7 +1228,7 @@ public:
     return returntype;
   }
 
-  llvm::FunctionType *get_llvm_return_type() {
+  llvm::FunctionType *get_llvm_function_type() {
     if(paramlist == nullptr) {
       switch(returntype) {
         case DataType::TYPE_int:
@@ -1257,8 +1257,8 @@ public:
     return nullptr;
   }
 
-  virtual llvm::Value *codegen() override {
-    llvm::FunctionType *FT = get_llvm_return_type();
+  virtual llvm::Function *codegen() override {
+    llvm::FunctionType *FT = get_llvm_function_type();
     llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, *id, TheModule.get());
     //set argument names
     int i = 0;
@@ -1278,7 +1278,9 @@ class LocalDefinition : public AST
 {
 public:
   virtual void printOn(std::ostream &out) const = 0;
-
+  virtual bool isVariableDefinition() const { return false; }
+  virtual std::string get_variable_name() const { return ""; }
+  // virtual VariableType get_variable_type() const { return VariableType(DataType::TYPE_nothing, nullptr); }
 };
 
 class VariableDefinition : public LocalDefinition
@@ -1295,15 +1297,25 @@ public:
     out << "VariableDefinition(" << *id << ", " << *variable_type << ")";
   }
 
+  virtual bool isVariableDefinition() const override { return true; }
+
+  virtual std::string get_variable_name() const override
+  {
+    return *id;
+  }
+
+  // virtual VariableType get_variable_type() const override
+  // {
+  //   return *variable_type;
+  // }
+
   virtual void sem() override
   {
     st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions());
   }
 
-  virtual llvm::Value *codegen() override {
-    llvm::AllocaInst *alloca = Builder.CreateAlloca(i32, nullptr, *id);
-    NamedValues.insert(std::make_pair(std::string(alloca->getName()), alloca));
-    return alloca;
+  virtual llvm::AllocaInst *codegen() override {
+    return nullptr;
   }
 
 private:
@@ -1315,6 +1327,17 @@ class LocalDefinitionList : public AST
 {
 public:
   std::vector<std::shared_ptr<LocalDefinition>> local_definition_list;
+
+  unsigned int get_vars_count() const
+  {
+    unsigned int count = 0;
+    for (const auto &ld : local_definition_list)
+    {
+      if (ld->isVariableDefinition())
+        count++;
+    }
+    return count;
+  }
 
   LocalDefinitionList() : local_definition_list() {}
 
@@ -1359,10 +1382,6 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    for (const auto &ld : local_definition_list)
-    {
-      ld->codegen();
-    }
     return nullptr;
   }
 };
@@ -1377,6 +1396,8 @@ public:
     out << "FunctionDeclaration(" << *header << ")";
   }
 
+  virtual bool isVariableDefinition() const override { return false; }
+  
   virtual void sem() override
   {
     header->sem();
@@ -1406,6 +1427,8 @@ public:
     out << "FunctionDefinition(" << *header << ", " << *definition_list << ", " << *block << ")";
   }
 
+  virtual bool isVariableDefinition() const override { return false; }
+
   virtual void sem() override
   {
     if (st.not_exists_scope())
@@ -1424,12 +1447,37 @@ public:
 
   virtual llvm::Value *codegen() override {
     llvm::BasicBlock *OuterBlock = Builder.GetInsertBlock();
-    header->codegen();
-    llvm::Function *F = TheModule->getFunction(header->get_name());
+    llvm::Function *F = header->codegen();
     llvm::BasicBlock *L1 = llvm::BasicBlock::Create(TheContext, "entry", F);
     Builder.SetInsertPoint(L1);
-    definition_list->codegen();
+    //handle variable declarations
+    std::vector<llvm::AllocaInst *> OldBindings;
+    std::vector<std::string> DeclaredVariables;
+    std::cout << "Generating code for " << definition_list->local_definition_list.size() << " local definitions" << std::endl;
+    for (const auto &ld : definition_list->local_definition_list) {
+      if(ld == nullptr) yyerror2("Warning: Found a null shared_ptr in local_definition_list.", 0);
+      if(ld->isVariableDefinition()) {
+        std::string var_name = ld->get_variable_name();
+        // VariableType var_type = ld->get_variable_type(); //TODO fix this
+        llvm::AllocaInst *alloca = Builder.CreateAlloca(i32, nullptr, var_name);
+        OldBindings.push_back(NamedValues[var_name]);
+        DeclaredVariables.push_back(var_name);
+        NamedValues[var_name] = alloca;
+        std::cout << "added " << var_name << std::endl;
+      }
+      else {
+        std::cout << "Function declaration" << std::endl;
+        ld->codegen();
+      }
+    }
+    //handle function body
     block->codegen();
+    //restore old variable-value bindings
+    for (unsigned i = 0, e = DeclaredVariables.size(); i != e; ++i) {
+      std::cout << "DeclaredVariables[i] removing " << DeclaredVariables[i] << std::endl;
+      NamedValues[DeclaredVariables[i]] = OldBindings[i];
+    }
+    // TheFPM->run(*F);
     Builder.SetInsertPoint(OuterBlock);
     return nullptr;
   }
