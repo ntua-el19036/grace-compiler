@@ -1447,12 +1447,23 @@ public:
 
   virtual llvm::Value *codegen() override {
     llvm::BasicBlock *OuterBlock = Builder.GetInsertBlock();
-    llvm::Function *F = header->codegen();
-    llvm::BasicBlock *L1 = llvm::BasicBlock::Create(TheContext, "entry", F);
+    llvm::Function *TheFunction = header->codegen();
+    llvm::BasicBlock *L1 = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
     Builder.SetInsertPoint(L1);
+
     //handle variable declarations
     std::vector<llvm::AllocaInst *> OldBindings;
     std::vector<std::string> DeclaredVariables;
+
+    for(auto &Arg : TheFunction->args()) {
+      std::string param_name = std::string(Arg.getName());
+      llvm::AllocaInst *alloca = Builder.CreateAlloca(Arg.getType(), nullptr, param_name);
+      Builder.CreateStore(&Arg, alloca);
+
+      OldBindings.push_back(NamedValues[param_name]);
+      DeclaredVariables.push_back(param_name);
+      NamedValues[param_name] = alloca;
+    }
     std::cout << "Generating code for " << definition_list->local_definition_list.size() << " local definitions" << std::endl;
     for (const auto &ld : definition_list->local_definition_list) {
       if(ld == nullptr) yyerror2("Warning: Found a null shared_ptr in local_definition_list.", 0);
@@ -1477,7 +1488,6 @@ public:
       std::cout << "DeclaredVariables[i] removing " << DeclaredVariables[i] << std::endl;
       NamedValues[DeclaredVariables[i]] = OldBindings[i];
     }
-    // TheFPM->run(*F);
     Builder.SetInsertPoint(OuterBlock);
     return nullptr;
   }

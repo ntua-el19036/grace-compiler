@@ -41,12 +41,6 @@ fun mymain(y,z : int[2]; k:char) : int
     var x, x13, x14: int;
     fun nested() : nothing
         var x : int;
-        fun nested() : nothing
-            var x : int;
-        {
-            x <- 1;
-            return;
-        }
     {
         return;
     }
