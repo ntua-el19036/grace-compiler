@@ -36,10 +36,10 @@ public:
     if (optimize)
     {
       TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
-      TheFPM->add(llvm::createInstructionCombiningPass());
-      TheFPM->add(llvm::createReassociatePass());
-      TheFPM->add(llvm::createGVNPass());
-      TheFPM->add(llvm::createCFGSimplificationPass());
+      // TheFPM->add(llvm::createInstructionCombiningPass());
+      // TheFPM->add(llvm::createReassociatePass());
+      // TheFPM->add(llvm::createGVNPass());
+      // TheFPM->add(llvm::createCFGSimplificationPass());
     }
     TheFPM->doInitialization();
     // Initialize types
@@ -772,8 +772,12 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    for (Stmt *s : stmt_list) s->codegen();
-    return nullptr;
+    llvm::Value *V = nullptr;
+    for (Stmt *s : stmt_list) {
+      if(!V) V = s->codegen();
+      else s->codegen();
+    }
+    return c32(0);
   }
 
 private:
@@ -814,7 +818,40 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    return nullptr;
+    llvm::Value *CondV = cond->codegen();
+    if(!CondV) return nullptr;
+    //CondV = Builder.CreateICmpNE(CondV, c32(0), "ifcond");
+
+    llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *ThenBB = llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+    llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "else");
+    llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(TheContext, "ifcont");
+
+    Builder.CreateCondBr(CondV, ThenBB, ElseBB);
+
+    Builder.SetInsertPoint(ThenBB);
+    llvm::Value *ThenV = stmt1->codegen();
+    if(!ThenV) return nullptr;
+    Builder.CreateBr(MergeBB);
+    ThenBB = Builder.GetInsertBlock();
+
+    TheFunction->getBasicBlockList().push_back(ElseBB);
+    Builder.SetInsertPoint(ElseBB);
+    llvm::Value *ElseV = stmt2->codegen();
+    if(!ElseV) return nullptr;
+
+    Builder.CreateBr(MergeBB);
+    ElseBB = Builder.GetInsertBlock();
+
+    TheFunction->getBasicBlockList().push_back(MergeBB);
+    Builder.SetInsertPoint(MergeBB);
+    // llvm::PHINode *PN = Builder.CreatePHI(i32, 2, "iftmp");
+
+    // PN->addIncoming(ThenV, ThenBB);
+    // PN->addIncoming(ElseV, ElseBB);
+
+    return MergeBB;
   }
 
 private:
@@ -914,8 +951,8 @@ public:
   virtual llvm::Value *codegen() override {
     llvm::Value* lval = l_value->llvm_get_value_ptr();
     llvm::Value* rval = expr->codegen();
-    Builder.CreateStore(rval, lval);
-    return nullptr;
+    Builder.CreateStore(rval, lval); 
+    return c32(0);
   }
 
 private:
@@ -1280,7 +1317,8 @@ public:
   virtual void printOn(std::ostream &out) const = 0;
   virtual bool isVariableDefinition() const { return false; }
   virtual std::string get_variable_name() const { return ""; }
-  // virtual VariableType get_variable_type() const { return VariableType(DataType::TYPE_nothing, nullptr); }
+  virtual llvm::Value *get_init_value() const { return nullptr; }
+  virtual llvm::Type *get_llvm_variable_type() const { return nullptr; }
 };
 
 class VariableDefinition : public LocalDefinition
@@ -1304,10 +1342,32 @@ public:
     return *id;
   }
 
-  // virtual VariableType get_variable_type() const override
-  // {
-  //   return *variable_type;
-  // }
+  virtual llvm::Type *get_llvm_variable_type() const override
+  {
+    switch(variable_type->getDataType()) {
+      case DataType::TYPE_int:
+        return i32;
+      case DataType::TYPE_char:
+        return i8;
+      case DataType::TYPE_nothing:
+        return nullptr;
+    }
+    return nullptr;
+  }
+
+  virtual llvm::Value *get_init_value() const override
+  {
+    switch (variable_type->getDataType())
+    {
+    case DataType::TYPE_int:
+      return c32(0);
+    case DataType::TYPE_char:
+      return c8(0);
+    case DataType::TYPE_nothing:
+      return nullptr;
+    }
+    return nullptr;
+  }
 
   virtual void sem() override
   {
@@ -1471,10 +1531,11 @@ public:
         std::string var_name = ld->get_variable_name();
         // VariableType var_type = ld->get_variable_type(); //TODO fix this
         llvm::AllocaInst *alloca = Builder.CreateAlloca(i32, nullptr, var_name);
+        llvm::Value *init = ld->get_init_value();
+        Builder.CreateStore(init, alloca);
         OldBindings.push_back(NamedValues[var_name]);
         DeclaredVariables.push_back(var_name);
         NamedValues[var_name] = alloca;
-        std::cout << "added " << var_name << std::endl;
       }
       else {
         std::cout << "Function declaration" << std::endl;
@@ -1485,10 +1546,10 @@ public:
     block->codegen();
     //restore old variable-value bindings
     for (unsigned i = 0, e = DeclaredVariables.size(); i != e; ++i) {
-      std::cout << "DeclaredVariables[i] removing " << DeclaredVariables[i] << std::endl;
       NamedValues[DeclaredVariables[i]] = OldBindings[i];
     }
     Builder.SetInsertPoint(OuterBlock);
+    // TheFPM->run(*TheFunction);
     return nullptr;
   }
 
