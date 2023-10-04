@@ -360,9 +360,7 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    std::cout << "Generating code for " << *stringval << std::endl;
-
-    return nullptr;
+    return Builder.CreateGlobalStringPtr(*stringval, "strtmp");
   }
 
 private:
@@ -547,9 +545,17 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    std::cout << "Generating code for " << *id << std::endl;
-
-    return nullptr;
+    llvm::Function *CalleeF = TheModule->getFunction(*id);
+    if(!CalleeF) {
+      yyerror2("Unknown function referenced", line_number);
+    }
+    //maybe check argsize
+    std::vector<llvm::Value *> ArgV;
+    for(unsigned i = 0, e = CalleeF->arg_size(); i != e; ++i) {
+      ArgV.push_back(args->expressions[i]->codegen());
+      if(!ArgV.back()) return nullptr;
+    }
+    return Builder.CreateCall(CalleeF, ArgV, "calltmp");
   }
 
 private:
@@ -583,7 +589,9 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    return nullptr;
+    llvm::Value *V = expr->codegen();
+    if(!V) return nullptr;
+    return Builder.CreateNeg(V, "negtmp");
   }
 
 private:
@@ -729,7 +737,9 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    return nullptr;
+    llvm::Value *CondV = cond->codegen();
+    if(!CondV) return nullptr;
+    return Builder.CreateNot(CondV, "nottmp");
   }
 
 private:
@@ -887,7 +897,7 @@ public:
   }
 
   virtual llvm::Value* codegen() override {
-    return nullptr;
+    return nullptr; // TODO: codegen
   }
 
 private:
@@ -1529,8 +1539,8 @@ public:
       if(ld == nullptr) yyerror2("Warning: Found a null shared_ptr in local_definition_list.", 0);
       if(ld->isVariableDefinition()) {
         std::string var_name = ld->get_variable_name();
-        // VariableType var_type = ld->get_variable_type(); //TODO fix this
-        llvm::AllocaInst *alloca = Builder.CreateAlloca(i32, nullptr, var_name);
+        llvm::Type *var_type = ld->get_llvm_variable_type(); //TODO fix this
+        llvm::AllocaInst *alloca = Builder.CreateAlloca(var_type, nullptr, var_name);
         llvm::Value *init = ld->get_init_value();
         Builder.CreateStore(init, alloca);
         OldBindings.push_back(NamedValues[var_name]);

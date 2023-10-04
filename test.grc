@@ -41,10 +41,13 @@ fun mymain(y,z : int; k:char) : int
     var x, x13, x14: int;
     fun nested() : nothing
         var x : int;
+        var c : char;
     {
         $ x <- 1;
         if(x > y) then x <- x+y; else x<-x-y;
         x <- x + 1;
+        c <- 'a';
+        mymain(y+x, x, c);
         return;
     }
     var a: int;
