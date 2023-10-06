@@ -897,7 +897,28 @@ public:
   }
 
   virtual llvm::Value* codegen() override {
-    return nullptr; // TODO: codegen
+    llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    
+    llvm::BasicBlock *LoopStartBB = llvm::BasicBlock::Create(TheContext, "loopstart", TheFunction);
+    llvm::BasicBlock *LoopInsideBB = llvm::BasicBlock::Create(TheContext, "loopin");
+    llvm::BasicBlock *LoopEndBB = llvm::BasicBlock::Create(TheContext, "loopend");
+
+    Builder.SetInsertPoint(LoopStartBB);
+    llvm::Value *CondV = cond->codegen();
+    if(!CondV) return nullptr;
+    
+    Builder.CreateCondBr(CondV, LoopInsideBB, LoopEndBB);
+
+    TheFunction->getBasicBlockList().push_back(LoopInsideBB);
+    Builder.SetInsertPoint(LoopInsideBB);
+    llvm::Value *InsideV = stmt->codegen();
+    if(!InsideV) return nullptr;
+    Builder.CreateBr(LoopStartBB);
+    LoopInsideBB = Builder.GetInsertBlock();
+
+    TheFunction->getBasicBlockList().push_back(LoopEndBB);
+    Builder.SetInsertPoint(LoopEndBB);
+    return LoopEndBB;
   }
 
 private:

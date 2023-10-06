@@ -45,6 +45,9 @@ fun mymain(y,z : int; k:char) : int
     {
         $ x <- 1;
         if(x > y) then x <- x+y; else x<-x-y;
+        while(x > 0) do {
+            x <- x - 1;
+        }
         x <- x + 1;
         c <- 'a';
         mymain(y+x, x, c);
