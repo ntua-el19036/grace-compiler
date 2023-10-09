@@ -1316,6 +1316,14 @@ public:
     out << ")";
   }
 
+  bool was_declared() const
+  {
+    STEntry *entry = st.lookup(*id);
+    if (entry == nullptr) return false;
+    if (entry->kind != EntryKind::FUNCTION) return false;
+    return true;
+  }
+  
   virtual void sem() override
   {
     std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
@@ -1567,7 +1575,8 @@ public:
   {
     if (st.not_exists_scope())
       st.openScope();
-    header->sem();
+    if(!header->was_declared())
+      header->sem();
     st.openScope(header->get_return_type());
     header->register_param_list();
     definition_list->sem();
