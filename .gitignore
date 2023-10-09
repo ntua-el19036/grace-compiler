@@ -11,3 +11,4 @@ parser.o
 *.o
 
 .vscode/
+test/

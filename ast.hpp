@@ -136,6 +136,10 @@ public:
     return nullptr;
   };
 
+  virtual llvm::Type *get_llvm_type() {
+    return nullptr;
+  };
+
   int line_number = 0;
 
   void type_check(DataType t, std::vector<int> dim = {})
@@ -313,12 +317,21 @@ public:
 
   virtual llvm::Value *llvm_get_value_ptr() override
   {
-    llvm::AllocaInst *alloca = NamedValues[*var];
+    llvm::Value *alloca = NamedValues[*var];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
     }
     return alloca;
+  }
+
+  virtual llvm::Type *get_llvm_type() override {
+    llvm::Value *alloca = NamedValues[*var];
+    if (!alloca) //this won't happen because we check for undeclared variables in sem
+    {
+      yyerror2("Unknown variable name", line_number);
+    }
+    return alloca->getType();
   }
 
   virtual llvm::Value *codegen() override
@@ -382,6 +395,22 @@ public:
     out << "ArrayAccess(" << *object << ", " << *position << ")";
   }
 
+  virtual llvm::Value *llvm_get_value_ptr() override
+  {
+    llvm::Type *object_type = object->get_llvm_type();
+    if (object_type->isArrayTy())
+    {
+      std::cout << "Array type" << std::endl;
+      object_type->print(llvm::outs());
+    }
+    else
+    {
+      std::cout << "Not array type" << std::endl;
+    object_type->print(llvm::outs());
+  }
+    return object->llvm_get_value_ptr();
+  }
+
   // TODO: implement
   virtual int eval() const override
   {
@@ -412,9 +441,11 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    std::cout << "Generating code for " << *object << std::endl;
-
-    return nullptr;
+    std::cout << "Generating code for ARRAY ACCESS " << *object << std::endl;
+    llvm::Value *V = object->llvm_get_value_ptr();
+    std::cout << "generated value: " << V << std::endl;
+    V->print(llvm::outs());
+    return V;
   }
 
 private:
@@ -465,8 +496,6 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    std::cout << "Generating code for " << expressions.size() << " expressions" << std::endl;
-
     return nullptr;
   }
 };
@@ -672,7 +701,6 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    std::cout << "Generating code for " << op << std::endl;
     llvm::Value *l = left->codegen();
     llvm::Value *r = right->codegen();
     switch (op)
@@ -1120,6 +1148,29 @@ public:
   // TODO: implement array types
   DataType getDataType() const { return datatype; }
 
+  llvm::Type * get_llvm_variable_type() {
+    llvm::Type *base_type = nullptr;
+    switch (datatype)
+    {
+    case DataType::TYPE_int:
+      base_type = i32;
+      break;
+    case DataType::TYPE_char:
+      base_type = i8;
+      break;
+    case DataType::TYPE_nothing:
+      base_type = llvm::Type::getVoidTy(TheContext);
+      break;
+    }
+    if(dim->getDimensions().empty()) return base_type;
+    std::vector<int> dimensions = dim->getDimensions();
+    for(std::vector<int>::reverse_iterator it = dimensions.rbegin(); it != dimensions.rend(); ++it ) {
+      base_type = llvm::ArrayType::get(base_type, *it);
+    }
+    base_type->print(llvm::outs());
+    return base_type;
+  }
+
   std::vector<int> getDimensions() const
   {
     return dim->getDimensions();
@@ -1375,15 +1426,7 @@ public:
 
   virtual llvm::Type *get_llvm_variable_type() const override
   {
-    switch(variable_type->getDataType()) {
-      case DataType::TYPE_int:
-        return i32;
-      case DataType::TYPE_char:
-        return i8;
-      case DataType::TYPE_nothing:
-        return nullptr;
-    }
-    return nullptr;
+    return variable_type->get_llvm_variable_type();
   }
 
   virtual llvm::Value *get_init_value() const override
@@ -1555,17 +1598,16 @@ public:
       DeclaredVariables.push_back(param_name);
       NamedValues[param_name] = alloca;
     }
-    std::cout << "Generating code for " << definition_list->local_definition_list.size() << " local definitions" << std::endl;
     for (const auto &ld : definition_list->local_definition_list) {
       if(ld == nullptr) yyerror2("Warning: Found a null shared_ptr in local_definition_list.", 0);
       if(ld->isVariableDefinition()) {
         std::string var_name = ld->get_variable_name();
-        llvm::Type *var_type = ld->get_llvm_variable_type(); //TODO fix this
+        llvm::Type *var_type = ld->get_llvm_variable_type();
         llvm::AllocaInst *alloca = Builder.CreateAlloca(var_type, nullptr, var_name);
-        llvm::Value *init = ld->get_init_value();
-        Builder.CreateStore(init, alloca);
-        OldBindings.push_back(NamedValues[var_name]);
-        DeclaredVariables.push_back(var_name);
+        // llvm::Value *init = ld->get_init_value();
+        // Builder.CreateStore(init, alloca);
+        // OldBindings.push_back(NamedValues[var_name]);
+        // DeclaredVariables.push_back(var_name);
         NamedValues[var_name] = alloca;
       }
       else {

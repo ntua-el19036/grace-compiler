@@ -39,7 +39,7 @@ $$ fun main () : nothing
 fun mymain(y,z : int; k:char) : int
     
     var x, x13, x14: int;
-    fun nested() : nothing
+    $$ fun nested() : nothing
         var x : int;
         var c : char;
     {
@@ -53,9 +53,12 @@ fun mymain(y,z : int; k:char) : int
         mymain(y+x, x, c);
         return;
     }
+    $$
+    var petros : int[10][5];
     var a: int;
     var b: int;
 {
+    petros[7] <- petros[3];
     x <- 1;
     a <- 2;
     b <- a + x;
