@@ -1573,8 +1573,10 @@ public:
 
   virtual void sem() override
   {
-    if (st.not_exists_scope())
+    if (st.not_exists_scope()) {
       st.openScope();
+      st.init_library_functions();
+    }
     if(!header->was_declared())
       header->sem();
     st.openScope(header->get_return_type());

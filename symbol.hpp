@@ -187,6 +187,28 @@ public:
   // ~SymbolTable() {
   //   delete hash_table;
   // }
+  void init_library_functions() {
+    std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector;
+    insert_function(std::string("readInteger"), DataType::TYPE_int, temp_param_vector);
+    insert_function(std::string("readChar"), DataType::TYPE_char, temp_param_vector);
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_VALUE, std::vector<int>(), false));
+    insert_function(std::string("writeChar"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("ascii"), DataType::TYPE_int, temp_param_vector);
+    temp_param_vector.clear();
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_int, PassingType::BY_VALUE, std::vector<int>(), false));
+    insert_function(std::string("writeInteger"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("chr"), DataType::TYPE_char, temp_param_vector);
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_REFERENCE, std::vector<int>(), true));
+    insert_function(std::string("readString"), DataType::TYPE_nothing, temp_param_vector);
+    temp_param_vector.clear();
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_REFERENCE, std::vector<int>(), true));
+    insert_function(std::string("writeString"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("strlen"), DataType::TYPE_int, temp_param_vector);
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_REFERENCE, std::vector<int>(), true));
+    insert_function(std::string("strcmp"), DataType::TYPE_int, temp_param_vector);
+    insert_function(std::string("strcpy"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("strcat"), DataType::TYPE_nothing, temp_param_vector);
+  }
 
   void display() {
     hash_table->displayHash();
@@ -207,13 +229,13 @@ public:
     return nullptr;
   }
 
-  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types) {
+  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) {
       yyerror("Duplicate declaration"); 
     }
-    STEntryFunction *entry = new STEntryFunction(rettype, param_types);
+    STEntryFunction *entry = new STEntryFunction(rettype, temp_param_vector);
     entry->name = str;
     entry->scope_number = num;
     // std::cout << "scope number: " << entry->scope_number << std::endl;
