@@ -545,9 +545,6 @@ public:
     {
       yyerror2("Not a function", line_number);
     }
-    if(entry->undefined == true) {
-      yyerror2("Function not defined", line_number);
-    }
     type = entry->type;
     if (args == nullptr)
     {
@@ -1365,6 +1362,16 @@ public:
     }
     st.insert_function_definition(*id, returntype, param_types);
   }
+
+  void define_main(){
+    if(paramlist != nullptr) {
+      yyerror2("Main function cannot have parameters", line_number);
+    }
+    if(returntype != DataType::TYPE_nothing) {
+      yyerror2("Main function must return nothing", line_number);
+    }
+    st.insert_function(*id, returntype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>>());
+  }
   
   virtual void sem() override
   {
@@ -1617,9 +1624,16 @@ public:
   virtual void sem() override
   {
     if (st.not_exists_scope()) {
-      //main (outermost) function TODO CHECK MORE THINGS
+      //main (outermost) function
       st.openScope();
       st.init_library_functions();
+      header->define_main();
+      st.openScope(header->get_return_type());
+      definition_list->sem();
+      block->sem();
+      st.check_undefined_functions();
+      st.closeScope();
+      return;
     }
     if(!header->was_declared()){
       header->sem();
@@ -1631,6 +1645,7 @@ public:
     header->register_param_list();
     definition_list->sem();
     block->sem();
+    st.check_undefined_functions();
     // std::cout<<"Before end of scope"<<std::endl;
     // st.display();
     st.closeScope();

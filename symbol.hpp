@@ -264,7 +264,6 @@ public:
 
   void insert_function_definition(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector){
     //check if declaration is matching
-    std::cout << "inserting function definition" << std::endl;
     STEntry *previous_entry = lookup(str);
     if (previous_entry == nullptr) {
       yyerror("Function not declared"); 
@@ -354,6 +353,17 @@ public:
     // std::cout << "closing scope " << current << std::endl;
     hash_table->deleteScope(current);
     scopes.pop_back();
+  }
+
+  void check_undefined_functions(){
+    for (int i = 0; i < hash_table->capacity; i++) {
+      if(hash_table->entries[i].empty()) continue;
+      for(std::list<STEntry>::iterator it = hash_table->entries[i].begin(); it != hash_table->entries[i].end(); it++) {
+        if(it->kind == EntryKind::FUNCTION && (it->scope_number == scopes.back().getScopeNumber()) && it->undefined == true) {
+          yyerror("A function is undefined");
+        }
+      }
+    }
   }
 
   int not_exists_scope() {
