@@ -545,6 +545,9 @@ public:
     {
       yyerror2("Not a function", line_number);
     }
+    if(entry->undefined == true) {
+      yyerror2("Function not defined", line_number);
+    }
     type = entry->type;
     if (args == nullptr)
     {
@@ -1193,12 +1196,14 @@ private:
 class FuncParam : public AST
 {
 public:
-  FuncParam(std::string *il, VariableType *t, PassingType pt) : id(il), param_type(t), passing_type(pt) {}
+  FuncParam(std::string *il, VariableType *t, PassingType pt, int lineno) : id(il), param_type(t), passing_type(pt) {line_number = lineno;}
   ~FuncParam()
   {
     delete id;
     delete param_type;
   }
+
+  int line_number = 0;
 
   void printOn(std::ostream &out) const override
   {
@@ -1217,6 +1222,9 @@ public:
 
   virtual void sem() override
   {
+    if(passing_type == PassingType::BY_VALUE && (!param_type->getDimensions().empty() || param_type->getMissingFirstDimension())) {
+      yyerror2("Cannot pass array by value", line_number);
+    }
     st.insert_param(*id, param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
   }
 
@@ -1254,11 +1262,11 @@ public:
     param_list.push_back(p);
   }
 
-  FuncParamList(IdList *il, VariableType *fpt, PassingType pt = PassingType::BY_VALUE)
+  FuncParamList(IdList *il, VariableType *fpt, int lineno, PassingType pt = PassingType::BY_VALUE)
   {
     for (const auto &id : il->id_list)
     {
-      add_param(new FuncParam(id, fpt, pt));
+      add_param(new FuncParam(id, fpt, pt, lineno));
     }
   }
   ~FuncParamList()
@@ -1302,12 +1310,16 @@ public:
 class Header : public AST
 {
 public:
-  Header(std::string *i, DataType t, FuncParamList *p = nullptr) : id(i), returntype(t), paramlist(p) {}
+  Header(std::string *i, DataType t, int lineno, FuncParamList *p = nullptr) : id(i), returntype(t), paramlist(p) {line_number = lineno;}
   ~Header()
   {
     delete id;
     delete paramlist;
   }
+  
+  int line_number = 0;
+  int get_line_number() const {return line_number;}
+  
   void printOn(std::ostream &out) const override
   {
     out << "Header(" << *id << ": " << returntype;
@@ -1322,6 +1334,36 @@ public:
     if (entry == nullptr) return false;
     if (entry->kind != EntryKind::FUNCTION) return false;
     return true;
+  }
+
+  void declare() {
+    if(was_declared()) {
+      yyerror2("Function already declared", line_number);
+    }
+    std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
+    if (paramlist != nullptr)
+    {
+      for (const auto &p : paramlist->param_list)
+      {
+        param_types.push_back(p->getParam());
+      }
+    }
+    st.insert_function_declaration(*id, returntype, param_types);
+  }
+
+  void define() {
+    if(!was_declared()) {
+      yyerror2("Function not declared", line_number);
+    }
+    std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
+    if (paramlist != nullptr)
+    {
+      for (const auto &p : paramlist->param_list)
+      {
+        param_types.push_back(p->getParam());
+      }
+    }
+    st.insert_function_definition(*id, returntype, param_types);
   }
   
   virtual void sem() override
@@ -1409,12 +1451,13 @@ public:
   virtual std::string get_variable_name() const { return ""; }
   virtual llvm::Value *get_init_value() const { return nullptr; }
   virtual llvm::Type *get_llvm_variable_type() const { return nullptr; }
+  int line_number = 0;
 };
 
 class VariableDefinition : public LocalDefinition
 {
 public:
-  VariableDefinition(std::string *i, VariableType *vt) : id(i), variable_type(vt) {}
+  VariableDefinition(std::string *i, VariableType *vt, int lineno) : id(i), variable_type(vt) {line_number = lineno;}
   ~VariableDefinition()
   {
     delete id;
@@ -1453,7 +1496,7 @@ public:
 
   virtual void sem() override
   {
-    st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions());
+    st.insert_variable(*id, variable_type->getDataType(), variable_type->getDimensions(), line_number);
   }
 
   virtual llvm::AllocaInst *codegen() override {
@@ -1483,11 +1526,11 @@ public:
 
   LocalDefinitionList() : local_definition_list() {}
 
-  void add_variable_definition_list(IdList *il, VariableType *vt)
+  void add_variable_definition_list(IdList *il, VariableType *vt, int lineno)
   {
     for (const auto &id : il->id_list)
     {
-      add_local_definition(new VariableDefinition(id, vt));
+      add_local_definition(new VariableDefinition(id, vt, lineno));
     }
   }
 
@@ -1542,7 +1585,7 @@ public:
   
   virtual void sem() override
   {
-    header->sem();
+    header->declare();
   }
 
   virtual llvm::Value *codegen() override {
@@ -1574,11 +1617,16 @@ public:
   virtual void sem() override
   {
     if (st.not_exists_scope()) {
+      //main (outermost) function TODO CHECK MORE THINGS
       st.openScope();
       st.init_library_functions();
     }
-    if(!header->was_declared())
+    if(!header->was_declared()){
       header->sem();
+    }
+    else {
+      header->define();
+    }
     st.openScope(header->get_return_type());
     header->register_param_list();
     definition_list->sem();

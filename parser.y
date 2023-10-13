@@ -99,8 +99,8 @@ local_def_list:
 ;
 
 header:
-  "fun" T_id '(' func_param_def_list ')' ':' ret_type { $$ = new Header($2, $7, $4); }
-| "fun" T_id '(' ')' ':' ret_type { $$ = new Header($2, $6); }
+  "fun" T_id '(' func_param_def_list ')' ':' ret_type { $$ = new Header($2, $7, mylineno, $4); }
+| "fun" T_id '(' ')' ':' ret_type { $$ = new Header($2, $6, mylineno); }
 ;
 
 func_param_def_list:
@@ -109,8 +109,8 @@ func_param_def_list:
 ;
 
 func_param_def:
-  "ref" id_list ':' func_param_type { $$ = new FuncParamList($2, $4, PassingType::BY_REFERENCE); }
-| id_list ':' func_param_type { $$ = new FuncParamList($1, $3); }
+  "ref" id_list ':' func_param_type { $$ = new FuncParamList($2, $4, mylineno, PassingType::BY_REFERENCE); }
+| id_list ':' func_param_type { $$ = new FuncParamList($1, $3, mylineno); }
 ;
 
 id_list:
@@ -149,7 +149,7 @@ func_decl:
 ;
 
 var_def:
-  "var" id_list ':' data_type array_dimension ';' { $$ = new LocalDefinitionList(); $$->add_variable_definition_list($2, new VariableType($4,$5));}
+  "var" id_list ':' data_type array_dimension ';' { $$ = new LocalDefinitionList(); $$->add_variable_definition_list($2, new VariableType($4,$5), mylineno);}
 ;
 
 stmt:
