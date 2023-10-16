@@ -188,6 +188,11 @@ public:
     return dimensions;
   }
 
+  virtual bool is_rvalue() const
+  {
+    return false;
+  }
+
 protected:
   DataType type;
   EntryKind kind;
@@ -248,6 +253,11 @@ public:
     type = DataType::TYPE_int;
   }
 
+  virtual bool is_rvalue() const override
+  {
+    return true;
+  }
+
 private:
   int num;
 };
@@ -273,6 +283,11 @@ public:
   virtual llvm::Value *codegen() override
   {
     return c8(charval);
+  }
+
+  virtual bool is_rvalue() const override
+  {
+    return true;
   }
 
 private:
@@ -534,6 +549,11 @@ public:
     return;
   }
 
+  virtual bool is_rvalue() const override
+  {
+    return true;
+  }
+
   virtual void sem() override
   {
     STEntry *entry = st.lookup(*id);
@@ -563,8 +583,13 @@ public:
       for (const auto &e : args->expressions)
       {
         e->sem();
-        std::vector<int> param_dimensions = std::get<2>(*param_it);
-        if (std::get<3>(*param_it))
+        if(std::get<1>(*param_it) == PassingType::BY_REFERENCE) {
+          if(e->is_rvalue() == true) {
+            yyerror2("Cannot pass r-value by reference", line_number);
+          }
+        }
+        std::vector<int> param_dimensions = std::get<2>(*param_it); // copy dimensions vector
+        if (std::get<3>(*param_it)) // if missing first dimension
           param_dimensions.insert(param_dimensions.begin(), 0);
         e->type_check(std::get<0>(*param_it), param_dimensions);
         ++param_it;
@@ -604,6 +629,11 @@ public:
   virtual int eval() const override
   {
     return -(expr->eval());
+  }
+
+  virtual bool is_rvalue() const override
+  {
+    return true;
   }
 
   virtual void sem() override
@@ -675,6 +705,11 @@ public:
       return {(left->eval()) ? true : right->eval()};
     }
     return 0; // this will never be reached
+  }
+
+  virtual bool is_rvalue() const override
+  {
+    return true;
   }
 
   // TODO: maybe check to see if operands are ints only
@@ -762,6 +797,11 @@ public:
     // if(cond->get_kind() == EntryKind::FUNCTION) {
     //   yyerror("Cannot negate a function");
     // }
+  }
+
+  virtual bool is_rvalue() const override
+  {
+    return true;
   }
 
   virtual llvm::Value *codegen() override {
@@ -1222,7 +1262,7 @@ public:
     if(passing_type == PassingType::BY_VALUE && (!param_type->getDimensions().empty() || param_type->getMissingFirstDimension())) {
       yyerror2("Cannot pass array by value", line_number);
     }
-    st.insert_param(*id, param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension());
+    st.insert_param(*id, param_type->getDataType(), passing_type, param_type->getDimensions(), param_type->getMissingFirstDimension(), line_number);
   }
 
   llvm::Type *get_llvm_type() const {
@@ -1327,10 +1367,7 @@ public:
 
   bool was_declared() const
   {
-    STEntry *entry = st.lookup(*id);
-    if (entry == nullptr) return false;
-    if (entry->kind != EntryKind::FUNCTION) return false;
-    return true;
+    return st.was_declared(*id);
   }
 
   void declare() {
@@ -1360,7 +1397,7 @@ public:
         param_types.push_back(p->getParam());
       }
     }
-    st.insert_function_definition(*id, returntype, param_types);
+    st.insert_function_definition(*id, returntype, param_types, line_number);
   }
 
   void define_main(){
@@ -1370,7 +1407,7 @@ public:
     if(returntype != DataType::TYPE_nothing) {
       yyerror2("Main function must return nothing", line_number);
     }
-    st.insert_function(*id, returntype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>>());
+    st.insert_function(*id, returntype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>>(), line_number);
   }
   
   virtual void sem() override
@@ -1383,7 +1420,7 @@ public:
         param_types.push_back(p->getParam());
       }
     }
-    st.insert_function(*id, returntype, param_types);
+    st.insert_function(*id, returntype, param_types, line_number);
   }
 
   void register_param_list()
