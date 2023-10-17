@@ -1095,6 +1095,7 @@ public:
       expr->sem();
       expr->type_check(st.get_return_type());
     }
+    st.set_return_exists();
   }
 
   virtual llvm::Value *codegen() override {
@@ -1382,7 +1383,7 @@ public:
         param_types.push_back(p->getParam());
       }
     }
-    st.insert_function_declaration(*id, returntype, param_types);
+    st.insert_function_declaration(*id, returntype, param_types, line_number);
   }
 
   void define() {
@@ -1643,7 +1644,7 @@ private:
 class FunctionDefinition : public LocalDefinition
 {
 public:
-  FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b) : header(h), definition_list(d), block(b) {}
+  FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b, int lineno = 0) : header(h), definition_list(d), block(b) {line_number = lineno;}
   ~FunctionDefinition()
   {
     delete header;
@@ -1682,6 +1683,7 @@ public:
     header->register_param_list();
     definition_list->sem();
     block->sem();
+    st.check_return_exists(line_number);
     st.check_undefined_functions();
     // std::cout<<"Before end of scope"<<std::endl;
     // st.display();

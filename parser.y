@@ -90,7 +90,7 @@ program:
 ;
 
 func_def:
-  header local_def_list block { $$ = new FunctionDefinition($1,$2,$3);}
+  header local_def_list block { $$ = new FunctionDefinition($1,$2,$3, mylineno);}
 ;
 
 local_def_list:

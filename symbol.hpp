@@ -175,6 +175,16 @@ public:
     return return_type;
   }
 
+  bool return_exists = false;
+
+  void set_return_exists() {
+    return_exists = true;
+  }
+
+  bool get_return_exists() {
+    return return_exists;
+  }
+
 private:
   int offset;
   int scope_number;
@@ -357,6 +367,16 @@ public:
     }
     scopes.push_back(Scope(ofs, number, return_type));
     // std::cout << "Opening scope: " << number << std::endl;
+  }
+
+  void set_return_exists() {
+    scopes.back().set_return_exists();
+  }
+
+  void check_return_exists(int lineno = 0){
+    if(scopes.back().get_return_exists() == false && scopes.back().get_return_type() != DataType::TYPE_nothing) {
+      yyerror2("Function does not return a value", lineno);
+    }
   }
 
   // TODO: implement this
