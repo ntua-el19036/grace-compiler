@@ -132,6 +132,14 @@ class Expr : public AST
 public:
   virtual int eval() const = 0;
 
+  virtual int llvm_get_array_offset() {
+    return 0;
+  }
+
+  virtual int get_int_cosnt_number() {
+    return 0;
+  }
+
   virtual llvm::Value *llvm_get_value_ptr() {
     return nullptr;
   };
@@ -243,6 +251,11 @@ public:
     return num;
   }
 
+  virtual int get_int_cosnt_number() override
+  {
+    return num;
+  }
+
   virtual llvm::Value *codegen() override
   {
     return c32(num);
@@ -330,6 +343,18 @@ public:
     kind = entry->kind;
   }
 
+  virtual int llvm_get_array_offset() override {
+    llvm::AllocaInst *alloca = NamedValues[*var];
+    if (!alloca) //this won't happen because we check for undeclared variables in sem
+    {
+      yyerror2("Unknown variable name", line_number);
+    }
+    std::cout << "Array offset: " << std::endl;
+    alloca->getArraySize()->print(llvm::outs());
+    // std::cout << " lalalal " << alloca->getType()->getArrayNumElements() << std::endl;
+    return 1;
+  }
+
   virtual llvm::Value *llvm_get_value_ptr() override
   {
     llvm::Value *alloca = NamedValues[*var];
@@ -337,6 +362,9 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
+    // llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0), "arrayidx");
+    alloca->print(llvm::outs());
+    // GEP->print(llvm::outs());
     return alloca;
   }
 
@@ -457,10 +485,12 @@ public:
   virtual llvm::Value *codegen() override
   {
     std::cout << "Generating code for ARRAY ACCESS " << *object << std::endl;
+    int x = object->llvm_get_array_offset();
     llvm::Value *V = object->llvm_get_value_ptr();
-    std::cout << "generated value: " << V << std::endl;
+    std::cout << " generated value: " << V << std::endl;
     V->print(llvm::outs());
     return V;
+    // return Builder.CreateGEP(i32, V, position->codegen(), "arrayidx");
   }
 
 private:

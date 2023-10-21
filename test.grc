@@ -1,66 +1,14 @@
-$$ fun main () : nothing 
-    var x1 : int[1];
-    var x2 : int[1][2][3];
-    var x3 : char[5][1];
-
-    fun test(x : int) : nothing {}
-
-    fun petros(ref a: char[][1] ; b : int[]) : int 
-        var p : char[10];
-        var ouzan : int;
-        var c : char;
+fun mymain() : nothing
+    fun ge(ref x: int[10][5]) : nothing
     {
-        ouzan <- 1+2;
-        $x3 <- a + x3;
-        return ouzan;
-    }
-
-    fun apostolos() : char {
-        return 'a';
-    }
-
-    var y : char;
-    var z : char;
-    var p : int;
-    var str : char[3];
-    var str2 : char[3];
-    
-{
-    if(z<y) then y<-'1'; else y<-'b';
-    while(1#2) do {
-        y <- 'a';
-    }
-    return;
-    p <- 1;
-    y <- apostolos();
-    test(p);
-} $$
-
-fun mymain(y,z : int; k:char) : int
-    
-    var x, x13, x14: int;
-    $$ fun nested() : nothing
-        var x : int;
-        var c : char;
-    {
-        $ x <- 1;
-        if(x > y) then x <- x+y; else x<-x-y;
-        while(x > 0) do {
-            x <- x - 1;
-        }
-        x <- x + 1;
-        c <- 'a';
-        mymain(y+x, x, c);
+        $x[1][2] <- 5;
         return;
     }
-    $$
     var petros : int[10][5];
-    var a: int;
-    var b: int;
+    $var x:int;
 {
-    petros[7] <- petros[3];
-    x <- 1;
-    a <- 2;
-    b <- a + x;
-    return b;
+    $x <- x+2;
+    petros[1] <- petros[2];
+    ge(petros);
+    return;
 }
