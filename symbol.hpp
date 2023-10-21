@@ -13,6 +13,8 @@ enum PassingType { BY_VALUE = 1, BY_REFERENCE };
 enum DataType { TYPE_int = 1, TYPE_char, TYPE_nothing };
 enum EntryKind { FUNCTION = 1, VARIABLE, PARAM};
 
+extern void yyerror2(const char *msg, int line_number);
+
 class STEntry {
 public:
   int offset;
@@ -20,6 +22,8 @@ public:
   int scope_number;
   int hash_value;
   EntryKind kind;
+  bool undefined = false;
+  int line_number = 0;
 
   DataType type;
   std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> paramTypes;
@@ -171,6 +175,16 @@ public:
     return return_type;
   }
 
+  bool return_exists = false;
+
+  void set_return_exists() {
+    return_exists = true;
+  }
+
+  bool get_return_exists() {
+    return return_exists;
+  }
+
 private:
   int offset;
   int scope_number;
@@ -187,6 +201,28 @@ public:
   // ~SymbolTable() {
   //   delete hash_table;
   // }
+  void init_library_functions() {
+    std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector;
+    insert_function(std::string("readInteger"), DataType::TYPE_int, temp_param_vector);
+    insert_function(std::string("readChar"), DataType::TYPE_char, temp_param_vector);
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_VALUE, std::vector<int>(), false));
+    insert_function(std::string("writeChar"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("ascii"), DataType::TYPE_int, temp_param_vector);
+    temp_param_vector.clear();
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_int, PassingType::BY_VALUE, std::vector<int>(), false));
+    insert_function(std::string("writeInteger"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("chr"), DataType::TYPE_char, temp_param_vector);
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_REFERENCE, std::vector<int>(), true));
+    insert_function(std::string("readString"), DataType::TYPE_nothing, temp_param_vector);
+    temp_param_vector.clear();
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_REFERENCE, std::vector<int>(), true));
+    insert_function(std::string("writeString"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("strlen"), DataType::TYPE_int, temp_param_vector);
+    temp_param_vector.push_back(std::make_tuple(DataType::TYPE_char, PassingType::BY_REFERENCE, std::vector<int>(), true));
+    insert_function(std::string("strcmp"), DataType::TYPE_int, temp_param_vector);
+    insert_function(std::string("strcpy"), DataType::TYPE_nothing, temp_param_vector);
+    insert_function(std::string("strcat"), DataType::TYPE_nothing, temp_param_vector);
+  }
 
   void display() {
     hash_table->displayHash();
@@ -207,26 +243,97 @@ public:
     return nullptr;
   }
 
-  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types) {
+  bool was_declared(std::string function_name) {
+    STEntry *entry = lookup(function_name);
+    if(entry == nullptr) return false;
+    if(entry->kind == EntryKind::FUNCTION && entry->scope_number == scopes.back().getScopeNumber()) return true;
+    return false;
+  }
+
+  void insert_function(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector, int lineno = 0) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) {
-      yyerror("Duplicate declaration"); 
+      //this might be impossible to reach
+      yyerror2("Duplicate function definition in the same scope", lineno);
     }
-    STEntryFunction *entry = new STEntryFunction(rettype, param_types);
+    STEntryFunction *entry = new STEntryFunction(rettype, temp_param_vector);
     entry->name = str;
     entry->scope_number = num;
+    entry->line_number = lineno;
     // std::cout << "scope number: " << entry->scope_number << std::endl;
     hash_table->insertItem(entry);
     // entry->printEntry();
     scopes.back().incrementSize(1);
   }
 
-  void insert_variable(std::string str, DataType type, std::vector<int> dimensions) {
+  void insert_function_declaration(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector, int lineno = 0){
+    STEntry *previous_entry = lookup(str);
+    int num = scopes.back().getScopeNumber();
+    if (previous_entry != nullptr && previous_entry->scope_number == num) {
+      yyerror2("Duplicate declaration in the same scope", lineno); 
+    }
+    STEntryFunction *entry = new STEntryFunction(rettype, temp_param_vector);
+    entry->name = str;
+    entry->undefined = true;
+    entry->scope_number = num;
+    entry->line_number = lineno;
+    // std::cout << "scope number: " << entry->scope_number << std::endl;
+    hash_table->insertItem(entry);
+    // entry->printEntry();
+  }
+
+  void insert_function_definition(std::string str, DataType rettype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector, int lineno = 0){
+    //check if declaration is matching
+    STEntry *previous_entry = lookup(str);
+    int current_scope = scopes.back().getScopeNumber();
+    if (previous_entry == nullptr) {
+      yyerror2("Function not declared", lineno); 
+    }
+    if(previous_entry->kind != EntryKind::FUNCTION && previous_entry->scope_number == current_scope) {
+      yyerror2("Duplicate function declaration", lineno);
+    }
+    if(previous_entry->undefined == false && previous_entry->scope_number == current_scope) {
+      yyerror2("Function already defined", lineno);
+    }
+    if(previous_entry->scope_number != current_scope) {
+      yyerror2("Function definition not in the same scope as declaration", lineno);
+    }
+    if(previous_entry->type != rettype) {
+      yyerror2("Function return type does not match declaration", lineno);
+    }
+    if(previous_entry->paramTypes.size() != temp_param_vector.size()) {
+      yyerror2("Function parameter number does not match declaration", lineno);
+    }
+    unsigned int e = previous_entry->paramTypes.size();
+    for(unsigned int i = 0; i < e; i++) {
+      if(std::get<0>(previous_entry->paramTypes[i]) != std::get<0>(temp_param_vector[i])) {
+        yyerror2("Function parameter type does not match declaration", lineno);
+      }
+      if(std::get<1>(previous_entry->paramTypes[i]) != std::get<1>(temp_param_vector[i])) {
+        yyerror2("Function parameter passing type does not match declaration", lineno);
+      }
+      if(std::get<2>(previous_entry->paramTypes[i]) != std::get<2>(temp_param_vector[i])) {
+        yyerror2("Function parameter array dimensions do not match declaration", lineno);
+      }
+      if(std::get<3>(previous_entry->paramTypes[i]) != std::get<3>(temp_param_vector[i])) {
+        yyerror2("Function parameter array missing first dimension does not match declaration", lineno);
+      }
+    }
+    //set undefined to false
+    previous_entry->undefined = false;
+  }
+
+  void insert_variable(std::string str, DataType type, std::vector<int> dimensions, int lineno) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
-      yyerror("Duplicate declaration"); 
+      yyerror2("Duplicate declaration", lineno); 
+    }
+    for(auto d : dimensions) {
+      if(d <= 0) {
+        yyerror2("Invalid array size", lineno);
+      }
     }
     STEntryVariable *entry = new STEntryVariable(type, dimensions);
     entry->name = str;
@@ -237,11 +344,11 @@ public:
     scopes.back().incrementSize(1);
   }
 
-  void insert_param(std::string str, DataType type, PassingType passing_type, std::vector<int> dimensions, bool missing_first_dimension) {
+  void insert_param(std::string str, DataType type, PassingType passing_type, std::vector<int> dimensions, bool missing_first_dimension, int lineno = 0) {
     STEntry *previous_entry = lookup(str);
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) { 
-      yyerror("Duplicate declaration"); 
+      yyerror2("Duplicate parameter declaration", lineno); 
     }
     STEntryParam *entry = new STEntryParam(type, passing_type, dimensions, missing_first_dimension);
     entry->name = str;
@@ -262,12 +369,33 @@ public:
     // std::cout << "Opening scope: " << number << std::endl;
   }
 
+  void set_return_exists() {
+    scopes.back().set_return_exists();
+  }
+
+  void check_return_exists(int lineno = 0){
+    if(scopes.back().get_return_exists() == false && scopes.back().get_return_type() != DataType::TYPE_nothing) {
+      yyerror2("Function does not return a value", lineno);
+    }
+  }
+
   // TODO: implement this
   void closeScope() {
     int current = scopes.back().getScopeNumber();
     // std::cout << "closing scope " << current << std::endl;
     hash_table->deleteScope(current);
     scopes.pop_back();
+  }
+
+  void check_undefined_functions(){
+    for (int i = 0; i < hash_table->capacity; i++) {
+      if(hash_table->entries[i].empty()) continue;
+      for(std::list<STEntry>::iterator it = hash_table->entries[i].begin(); it != hash_table->entries[i].end(); it++) {
+        if(it->kind == EntryKind::FUNCTION && (it->scope_number == scopes.back().getScopeNumber()) && it->undefined == true) {
+          yyerror2("A function is undefined", it->line_number);
+        }
+      }
+    }
   }
 
   int not_exists_scope() {
