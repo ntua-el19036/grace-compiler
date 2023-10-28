@@ -33,13 +33,14 @@ public:
     TheModule = std::make_unique<llvm::Module>("grace program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
     NamedValues = std::map<std::string, llvm::AllocaInst *>();
+    // NamedFunctions = std::map<std::string, llvm::Function *>();
     if (optimize)
     {
       TheFPM->add(llvm::createPromoteMemoryToRegisterPass());
       // TheFPM->add(llvm::createInstructionCombiningPass());
-      // TheFPM->add(llvm::createReassociatePass());
-      // TheFPM->add(llvm::createGVNPass());
-      // TheFPM->add(llvm::createCFGSimplificationPass());
+      TheFPM->add(llvm::createReassociatePass());
+      TheFPM->add(llvm::createGVNPass());
+      TheFPM->add(llvm::createCFGSimplificationPass());
     }
     TheFPM->doInitialization();
     // Initialize types
@@ -102,6 +103,7 @@ protected:
   }
   
   static std::map<std::string, llvm::AllocaInst *> NamedValues;
+  // static std::map<std::string, llvm::Function *> NamedFunctions;
 };
 
 inline std::ostream &operator<<(std::ostream &out, const AST &t)
@@ -132,7 +134,7 @@ class Expr : public AST
 public:
   virtual int eval() const = 0;
 
-  virtual int llvm_get_array_offset() {
+  virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> * indices) {
     return 0;
   }
 
@@ -343,16 +345,13 @@ public:
     kind = entry->kind;
   }
 
-  virtual int llvm_get_array_offset() override {
+  virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> *indices) override {
     llvm::AllocaInst *alloca = NamedValues[*var];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
     }
-    std::cout << "Array offset: " << std::endl;
-    alloca->getArraySize()->print(llvm::outs());
-    // std::cout << " lalalal " << alloca->getType()->getArrayNumElements() << std::endl;
-    return 1;
+    return alloca;
   }
 
   virtual llvm::Value *llvm_get_value_ptr() override
@@ -362,10 +361,8 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
-    // llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0), "arrayidx");
-    alloca->print(llvm::outs());
-    // GEP->print(llvm::outs());
-    return alloca;
+    llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0));
+    return GEP;
   }
 
   virtual llvm::Type *get_llvm_type() override {
@@ -384,7 +381,8 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
-    return Builder.CreateLoad(alloca, *var);
+    llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "ptr");
+    return Builder.CreateLoad(ptr, *var);
   }
 
 private:
@@ -440,18 +438,13 @@ public:
 
   virtual llvm::Value *llvm_get_value_ptr() override
   {
-    llvm::Type *object_type = object->get_llvm_type();
-    if (object_type->isArrayTy())
-    {
-      std::cout << "Array type" << std::endl;
-      object_type->print(llvm::outs());
-    }
-    else
-    {
-      std::cout << "Not array type" << std::endl;
-    object_type->print(llvm::outs());
-  }
-    return object->llvm_get_value_ptr();
+    std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
+    indices->push_back(c32(0));
+    llvm::Value *base = object->llvm_get_array_offset(indices);
+    indices->push_back(position->codegen());
+    llvm::Value *ptr = Builder.CreateGEP(base, *indices, "array");
+    delete indices;
+    return ptr;
   }
 
   // TODO: implement
@@ -482,15 +475,20 @@ public:
     dimensions.erase(dimensions.begin());
   }
 
+  virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> *indices) {
+    indices->push_back(position->codegen());
+    return object->llvm_get_array_offset(indices);
+  }
+
   virtual llvm::Value *codegen() override
   {
-    std::cout << "Generating code for ARRAY ACCESS " << *object << std::endl;
-    int x = object->llvm_get_array_offset();
-    llvm::Value *V = object->llvm_get_value_ptr();
-    std::cout << " generated value: " << V << std::endl;
-    V->print(llvm::outs());
-    return V;
-    // return Builder.CreateGEP(i32, V, position->codegen(), "arrayidx");
+    std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
+    indices->push_back(c32(0));
+    llvm::Value *base = object->llvm_get_array_offset(indices);
+    indices->push_back(position->codegen());
+    llvm::Value *ptr = Builder.CreateGEP(base, *indices, "array");
+    delete indices;
+    return Builder.CreateLoad(ptr, "element");
   }
 
 private:
@@ -630,6 +628,7 @@ public:
   virtual llvm::Value *codegen() override
   {
     llvm::Function *CalleeF = TheModule->getFunction(*id);
+    // llvm::Function *CalleeF = NamedFunctions[*id];
     if(!CalleeF) {
       yyerror2("Unknown function referenced", line_number);
     }
@@ -639,7 +638,7 @@ public:
       ArgV.push_back(args->expressions[i]->codegen());
       if(!ArgV.back()) return nullptr;
     }
-    return Builder.CreateCall(CalleeF, ArgV, "calltmp");
+    return Builder.CreateCall(CalleeF, ArgV);
   }
 
 private:
@@ -1732,9 +1731,14 @@ public:
     std::vector<llvm::AllocaInst *> OldBindings;
     std::vector<std::string> DeclaredVariables;
 
+    //handle function declarations
+    std::vector<llvm::Function *> OldFunctionBindings;
+    std::vector<std::string> DeclaredFunctions;
+
     for(auto &Arg : TheFunction->args()) {
       std::string param_name = std::string(Arg.getName());
       llvm::AllocaInst *alloca = Builder.CreateAlloca(Arg.getType(), nullptr, param_name);
+      // llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0));
       Builder.CreateStore(&Arg, alloca);
 
       OldBindings.push_back(NamedValues[param_name]);

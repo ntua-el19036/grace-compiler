@@ -1,14 +1,56 @@
-fun mymain() : nothing
-    fun ge(ref x: int[10][5]) : nothing
-    {
-        $x[1][2] <- 5;
+$$ fun mymain() : nothing
+    fun nested(): int
+        fun nested(): int
+        {
+            return 3;
+        }
+    {   $ nested1
+        nested();
+        return 1;
+    }
+    fun inner(): nothing
+        fun nested(): int
+        {
+            return 2;
+        }
+    {   $ inner
+        nested();
         return;
     }
-    var petros : int[10][5];
-    $var x:int;
-{
-    $x <- x+2;
-    petros[1] <- petros[2];
-    ge(petros);
+{   $ mymain
+    nested();
+} $$
+
+fun main() : nothing
+    var x:int;
+    var y:int;
+    fun inner(k:int): nothing
+        var x:int;
+    {   $ inner
+        x<-k;
+        y<-k-1;
+        x<-x+y;
+        return;
+    }
+{ $ main
+    x<-2;
+    inner(x);
     return;
 }
+$$
+fun main() : nothing
+    var x:int[2][3];
+    var y:int;
+    var z:int;
+    fun inner() : int { return 1;}
+    {
+        x[1][2] <- inner();
+        y <- x[1][2];
+        x[1][2] <- y;
+        x[3] <- x[5];
+        z <- inner();
+        x[0][1] <- z - y;
+        x[0][0] <- z + y;
+        return;
+        }
+$$
