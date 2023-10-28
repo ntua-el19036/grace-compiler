@@ -362,8 +362,6 @@ public:
       yyerror2("Unknown variable name", line_number);
     }
     llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0));
-    alloca->print(llvm::outs()); std::cout << std::endl;
-    // GEP->print(llvm::outs());
     return GEP;
   }
 
@@ -383,7 +381,8 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
-    return Builder.CreateLoad(alloca, *var);
+    llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "ptr");
+    return Builder.CreateLoad(ptr, *var);
   }
 
 private:
@@ -639,7 +638,7 @@ public:
       ArgV.push_back(args->expressions[i]->codegen());
       if(!ArgV.back()) return nullptr;
     }
-    return Builder.CreateCall(CalleeF, ArgV, "calltmp");
+    return Builder.CreateCall(CalleeF, ArgV);
   }
 
 private:
@@ -1739,6 +1738,7 @@ public:
     for(auto &Arg : TheFunction->args()) {
       std::string param_name = std::string(Arg.getName());
       llvm::AllocaInst *alloca = Builder.CreateAlloca(Arg.getType(), nullptr, param_name);
+      // llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0));
       Builder.CreateStore(&Arg, alloca);
 
       OldBindings.push_back(NamedValues[param_name]);

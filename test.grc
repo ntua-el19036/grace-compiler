@@ -20,7 +20,7 @@ $$ fun mymain() : nothing
 {   $ mymain
     nested();
 } $$
-$$
+
 fun main() : nothing
     var x:int;
     var y:int;
@@ -41,10 +41,16 @@ $$
 fun main() : nothing
     var x:int[2][3];
     var y:int;
+    var z:int;
+    fun inner() : int { return 1;}
     {
-        x[1][2] <- 3;
+        x[1][2] <- inner();
         y <- x[1][2];
         x[1][2] <- y;
         x[3] <- x[5];
+        z <- inner();
+        x[0][1] <- z - y;
+        x[0][0] <- z + y;
         return;
         }
+$$
