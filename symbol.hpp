@@ -244,9 +244,12 @@ public:
   }
 
   bool was_declared(std::string function_name) {
-    STEntry *entry = lookup(function_name);
-    if(entry == nullptr) return false;
-    if(entry->kind == EntryKind::FUNCTION && entry->scope_number == scopes.back().getScopeNumber()) return true;
+    int index = hash_table->hashFunction(function_name);
+    for(auto entry = hash_table->entries[index].begin(); entry != hash_table->entries[index].end(); entry++) {
+      if (entry->name == function_name && entry->kind == EntryKind::FUNCTION) {
+        return true;
+      }
+    }
     return false;
   }
 
@@ -255,7 +258,7 @@ public:
     int num = scopes.back().getScopeNumber();
     if (previous_entry != nullptr && previous_entry->scope_number == num) {
       //this might be impossible to reach
-      yyerror2("Duplicate function definition in the same scope", lineno);
+      yyerror2("Function name was already declared in this scope", lineno);
     }
     STEntryFunction *entry = new STEntryFunction(rettype, temp_param_vector);
     entry->name = str;
@@ -290,14 +293,14 @@ public:
     if (previous_entry == nullptr) {
       yyerror2("Function not declared", lineno); 
     }
-    if(previous_entry->kind != EntryKind::FUNCTION && previous_entry->scope_number == current_scope) {
+    if(previous_entry->kind != EntryKind::FUNCTION) {
       yyerror2("Duplicate function declaration", lineno);
     }
-    if(previous_entry->undefined == false && previous_entry->scope_number == current_scope) {
+    if(previous_entry->undefined == false) {
       yyerror2("Function already defined", lineno);
     }
-    if(previous_entry->scope_number != current_scope) {
-      yyerror2("Function definition not in the same scope as declaration", lineno);
+    if(previous_entry->undefined == true && previous_entry->scope_number != current_scope) {
+      yyerror2("Function declaration and definition are not in the same scope", lineno);
     }
     if(previous_entry->type != rettype) {
       yyerror2("Function return type does not match declaration", lineno);
