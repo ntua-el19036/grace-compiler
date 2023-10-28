@@ -23,18 +23,18 @@ $$ fun mymain() : nothing
 
 fun main() : nothing
     var x:int;
+    var w:char;
     var y:int;
-    fun inner(k:int): nothing
+    fun inner(ref k:int; ref p:char): nothing
         var x:int;
     {   $ inner
-        x<-k;
-        y<-k-1;
-        x<-x+y;
+        x<-k+199;
+        k<-x;
         return;
     }
 { $ main
     x<-2;
-    inner(x);
+    inner(x, w);
     return;
 }
 $$

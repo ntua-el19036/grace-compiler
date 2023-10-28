@@ -633,10 +633,16 @@ public:
       yyerror2("Unknown function referenced", line_number);
     }
     //maybe check argsize
+    llvm::Function::arg_iterator argIt = CalleeF->arg_begin();
     std::vector<llvm::Value *> ArgV;
     for(unsigned i = 0, e = CalleeF->arg_size(); i != e; ++i) {
-      ArgV.push_back(args->expressions[i]->codegen());
+      if(argIt->getType()->isPointerTy()) {
+        ArgV.push_back(args->expressions[i]->llvm_get_value_ptr());
+      } else {
+        ArgV.push_back(args->expressions[i]->codegen());
+      }
       if(!ArgV.back()) return nullptr;
+      ++argIt;
     }
     return Builder.CreateCall(CalleeF, ArgV);
   }
@@ -766,7 +772,9 @@ public:
   virtual llvm::Value *codegen() override
   {
     llvm::Value *l = left->codegen();
+    if(l->getType()->isPointerTy()) l = Builder.CreateLoad(l, "loadtmp");
     llvm::Value *r = right->codegen();
+    if(r->getType()->isPointerTy()) r = Builder.CreateLoad(r, "loadtmp");
     switch (op)
     {
     case '+':
@@ -1300,8 +1308,12 @@ public:
     switch (type)
     {
     case DataType::TYPE_int:
+      if(passing_type == PassingType::BY_REFERENCE)
+        return i32->getPointerTo();
       return i32;
     case DataType::TYPE_char:
+      if(passing_type == PassingType::BY_REFERENCE)
+        return i8->getPointerTo();
       return i8;
     case DataType::TYPE_nothing:
       return llvm::Type::getVoidTy(TheContext);
