@@ -361,6 +361,10 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
+    if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isPointerTy()) {
+      llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "outptr");
+      return Builder.CreateLoad(ptr, *var);
+    }
     llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0));
     return GEP;
   }
@@ -380,6 +384,11 @@ public:
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
+    }
+     if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isPointerTy()) {
+      llvm::Value *outptr = Builder.CreateGEP(alloca, c32(0), "outptr");
+      llvm::Value *inptr = Builder.CreateLoad(outptr, *var);
+      return Builder.CreateLoad(inptr, *var);
     }
     llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "ptr");
     return Builder.CreateLoad(ptr, *var);
@@ -772,9 +781,15 @@ public:
   virtual llvm::Value *codegen() override
   {
     llvm::Value *l = left->codegen();
-    if(l->getType()->isPointerTy()) l = Builder.CreateLoad(l, "loadtmp");
+    while(l->getType()->isPointerTy()) {
+      llvm::Value *tmp = Builder.CreateGEP(l, c32(0));
+      l = Builder.CreateLoad(tmp);
+    }
     llvm::Value *r = right->codegen();
-    if(r->getType()->isPointerTy()) r = Builder.CreateLoad(r, "loadtmp");
+    while(r->getType()->isPointerTy()) {
+      llvm::Value *tmp = Builder.CreateGEP(r, c32(0));
+      r = Builder.CreateLoad(tmp);
+    }
     switch (op)
     {
     case '+':
@@ -1087,7 +1102,7 @@ public:
   virtual llvm::Value *codegen() override {
     llvm::Value* lval = l_value->llvm_get_value_ptr();
     llvm::Value* rval = expr->codegen();
-    Builder.CreateStore(rval, lval); 
+    Builder.CreateStore(rval, lval);
     return c32(0);
   }
 
@@ -1770,7 +1785,6 @@ public:
         NamedValues[var_name] = alloca;
       }
       else {
-        std::cout << "Function declaration" << std::endl;
         ld->codegen();
       }
     }

@@ -25,16 +25,22 @@ fun main() : nothing
     var x:int;
     var w:char;
     var y:int;
-    fun inner(ref k:int; ref p:char): nothing
+    fun inner(ref k:int; ref p:char; j : int): nothing
         var x:int;
+        var a:int[2];
     {   $ inner
         x<-k+199;
         k<-x;
+        k <- j mod 2;
+        j <- k+x;
+        a[1] <- j;
+        a[0] <- k;
+        a[0] <- a[1];
         return;
     }
 { $ main
     x<-2;
-    inner(x, w);
+    inner(x, w, 23);
     return;
 }
 $$
