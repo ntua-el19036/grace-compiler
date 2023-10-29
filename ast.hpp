@@ -361,6 +361,10 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
+    if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isPointerTy()) {
+      llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "outptr");
+      return Builder.CreateLoad(ptr, *var);
+    }
     llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0));
     return GEP;
   }
@@ -380,6 +384,11 @@ public:
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
+    }
+     if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isPointerTy()) {
+      llvm::Value *outptr = Builder.CreateGEP(alloca, c32(0), "outptr");
+      llvm::Value *inptr = Builder.CreateLoad(outptr, *var);
+      return Builder.CreateLoad(inptr, *var);
     }
     llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "ptr");
     return Builder.CreateLoad(ptr, *var);
@@ -442,7 +451,9 @@ public:
     indices->push_back(c32(0));
     llvm::Value *base = object->llvm_get_array_offset(indices);
     indices->push_back(position->codegen());
-    llvm::Value *ptr = Builder.CreateGEP(base, *indices, "array");
+    if(base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
+      base = Builder.CreateLoad(base, "array"); //this is dumb, it loads the whole array, oh well
+    llvm::Value *ptr = Builder.CreateGEP(base, *indices, "elementptr");
     delete indices;
     return ptr;
   }
@@ -476,8 +487,9 @@ public:
   }
 
   virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> *indices) {
+    llvm::Value *result = object->llvm_get_array_offset(indices);
     indices->push_back(position->codegen());
-    return object->llvm_get_array_offset(indices);
+    return result;
   }
 
   virtual llvm::Value *codegen() override
@@ -485,8 +497,13 @@ public:
     std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
     indices->push_back(c32(0));
     llvm::Value *base = object->llvm_get_array_offset(indices);
+    std::cout << std::endl << "base: " ;
+    base->print(llvm::outs());
+    std::cout << std::endl;
     indices->push_back(position->codegen());
-    llvm::Value *ptr = Builder.CreateGEP(base, *indices, "array");
+    if(base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
+      base = Builder.CreateLoad(base, "array"); //this is dumb, it loads the whole array, oh well
+    llvm::Value *ptr = Builder.CreateGEP(base, *indices, "elementptr");
     delete indices;
     return Builder.CreateLoad(ptr, "element");
   }
@@ -633,10 +650,18 @@ public:
       yyerror2("Unknown function referenced", line_number);
     }
     //maybe check argsize
+    llvm::Function::arg_iterator argIt = CalleeF->arg_begin();
     std::vector<llvm::Value *> ArgV;
     for(unsigned i = 0, e = CalleeF->arg_size(); i != e; ++i) {
-      ArgV.push_back(args->expressions[i]->codegen());
+      if(argIt->getType()->isPointerTy()) {
+        // if(args->expressions[i]->llvm_get_value_ptr()->getType()->isArrayTy()) {
+        // }
+        ArgV.push_back(args->expressions[i]->llvm_get_value_ptr());
+      } else {
+        ArgV.push_back(args->expressions[i]->codegen());
+      }
       if(!ArgV.back()) return nullptr;
+      ++argIt;
     }
     return Builder.CreateCall(CalleeF, ArgV);
   }
@@ -766,7 +791,15 @@ public:
   virtual llvm::Value *codegen() override
   {
     llvm::Value *l = left->codegen();
+    while(l->getType()->isPointerTy()) {
+      llvm::Value *tmp = Builder.CreateGEP(l, c32(0));
+      l = Builder.CreateLoad(tmp);
+    }
     llvm::Value *r = right->codegen();
+    while(r->getType()->isPointerTy()) {
+      llvm::Value *tmp = Builder.CreateGEP(r, c32(0));
+      r = Builder.CreateLoad(tmp);
+    }
     switch (op)
     {
     case '+':
@@ -1079,7 +1112,7 @@ public:
   virtual llvm::Value *codegen() override {
     llvm::Value* lval = l_value->llvm_get_value_ptr();
     llvm::Value* rval = expr->codegen();
-    Builder.CreateStore(rval, lval); 
+    Builder.CreateStore(rval, lval);
     return c32(0);
   }
 
@@ -1237,7 +1270,6 @@ public:
     for(std::vector<int>::reverse_iterator it = dimensions.rbegin(); it != dimensions.rend(); ++it ) {
       base_type = llvm::ArrayType::get(base_type, *it);
     }
-    base_type->print(llvm::outs());
     return base_type;
   }
 
@@ -1300,8 +1332,30 @@ public:
     switch (type)
     {
     case DataType::TYPE_int:
+      if(passing_type == PassingType::BY_REFERENCE) {
+        if(param_type->getDimensions().empty() && param_type->getMissingFirstDimension() == false) {
+          return i32->getPointerTo();
+        }
+        if(param_type->getDimensions().empty() && param_type->getMissingFirstDimension() == true) {
+          return llvm::ArrayType::get(i32, 1)->getPointerTo();
+        }
+        if(param_type->getMissingFirstDimension() == false) {
+          llvm::Type *arrayType = i32;
+          std::vector<int> dimensions = param_type->getDimensions();
+          std::reverse(dimensions.begin(), dimensions.end()); 
+          for(unsigned dimension : dimensions) {
+            arrayType = llvm::ArrayType::get(arrayType, dimension);
+          }
+          std::cout << "arrayType: ";
+          arrayType->print(llvm::outs());
+          std::cout << std::endl;
+          return arrayType->getPointerTo();
+        }
+      }
       return i32;
     case DataType::TYPE_char:
+      if(passing_type == PassingType::BY_REFERENCE)
+        return i8->getPointerTo();
       return i8;
     case DataType::TYPE_nothing:
       return llvm::Type::getVoidTy(TheContext);
@@ -1758,7 +1812,6 @@ public:
         NamedValues[var_name] = alloca;
       }
       else {
-        std::cout << "Function declaration" << std::endl;
         ld->codegen();
       }
     }

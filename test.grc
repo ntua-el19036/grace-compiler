@@ -22,19 +22,22 @@ $$ fun mymain() : nothing
 } $$
 
 fun main() : nothing
-    var x:int;
-    var y:int;
-    fun inner(k:int): nothing
-        var x:int;
-    {   $ inner
-        x<-k;
-        y<-k-1;
-        x<-x+y;
-        return;
-    }
+    var x:int[2][3][4];
+    var z:int;
+    fun inner(ref k:int[2][3][4]; ref m:int): nothing
+        var y:int;
+        {
+            y <- k[1][2][3] + k[0][1][2];
+            y <- x[1][2][3];
+            x[1][2][3] <- y;
+            k[1][2][3] <- y;
+            return;
+        }
 { $ main
-    x<-2;
-    inner(x);
+    $x[1] <- 1;
+    $x[0] <- 2;
+    x[1][2][3] <- 1;
+    inner(x, z);
     return;
 }
 $$
