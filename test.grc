@@ -19,11 +19,19 @@ $$ fun mymain() : nothing
     }
 {   $ mymain
     nested();
-} $$
+} 
 
 fun main() : nothing
     var x:int[2][3][4];
     var z:int;
+    fun mimo(ref a:int[]):nothing 
+        var mystring : char[3];
+        {
+            mystring <- "ab";
+            writeString(mystring);
+        writeInteger(10);
+        return;
+        }
     fun inner(ref k:int[2][3][4]; ref m:int): nothing
         var y:int;
         {
@@ -38,6 +46,21 @@ fun main() : nothing
     $x[0] <- 2;
     x[1][2][3] <- 1;
     inner(x, z);
+    return;
+}$$
+fun main() : nothing 
+    var x:int[2][3][4];
+    fun inner(ref k:int[][3][4]): nothing
+        var y:int;
+        {
+            y <- k[5][2][3];
+            k[1][2][3] <- y;
+            $y <- x[1][2][3];
+            return;
+        }
+{
+    x[1][2][3] <- 1;
+    $inner(x);
     return;
 }
 $$

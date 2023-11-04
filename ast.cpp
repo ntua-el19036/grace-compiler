@@ -12,4 +12,4 @@ llvm::Type *AST::i8;
 llvm::Type *AST::i32;
 llvm::Type *AST::i64;
 
-std::map<std::string, llvm::AllocaInst *> AST::NamedValues;
+std::map<std::string, llvm::Value *> AST::NamedValues;

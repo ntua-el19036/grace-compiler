@@ -32,7 +32,7 @@ public:
     // Initialize
     TheModule = std::make_unique<llvm::Module>("grace program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
-    NamedValues = std::map<std::string, llvm::AllocaInst *>();
+    NamedValues = std::map<std::string, llvm::Value *>();
     // NamedFunctions = std::map<std::string, llvm::Function *>();
     if (optimize)
     {
@@ -102,7 +102,7 @@ protected:
     return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
   }
   
-  static std::map<std::string, llvm::AllocaInst *> NamedValues;
+  static std::map<std::string, llvm::Value *> NamedValues;
   // static std::map<std::string, llvm::Function *> NamedFunctions;
 };
 
@@ -346,7 +346,7 @@ public:
   }
 
   virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> *indices) override {
-    llvm::AllocaInst *alloca = NamedValues[*var];
+    llvm::Value *alloca = NamedValues[*var];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -361,9 +361,14 @@ public:
     {
       yyerror2("Unknown variable name", line_number);
     }
+    // TODO: check if this is correct
     if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isPointerTy()) {
       llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "outptr");
       return Builder.CreateLoad(ptr, *var);
+    }
+    if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isArrayTy()) {
+      llvm::Value *ptr = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0),c32(0)}), "firstelementptr");
+      return ptr;
     }
     llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0));
     return GEP;
@@ -380,7 +385,7 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    llvm::AllocaInst *alloca = NamedValues[*var];
+    llvm::Value *alloca = NamedValues[*var];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -423,7 +428,17 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    return Builder.CreateGlobalStringPtr(*stringval, "strtmp");
+    llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
+    Builder.CreateGEP(string_ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "stringptr");
+    std::cout << std::endl << "STRING1: " << std::endl;
+    return Builder.CreateLoad(string_ptr, "stringliteral");
+  }
+
+  virtual llvm::Value *llvm_get_value_ptr() override
+  {
+    llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
+    std::cout << std::endl << "STRING2: " << std::endl;
+    return Builder.CreateGEP(string_ptr, c32(0), "stringptr");
   }
 
 private:
@@ -448,11 +463,11 @@ public:
   virtual llvm::Value *llvm_get_value_ptr() override
   {
     std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
-    indices->push_back(c32(0));
+    // indices->push_back(c32(0));
     llvm::Value *base = object->llvm_get_array_offset(indices);
     indices->push_back(position->codegen());
     if(base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
-      base = Builder.CreateLoad(base, "array"); //this is dumb, it loads the whole array, oh well
+      base = Builder.CreateLoad(base, "array");
     llvm::Value *ptr = Builder.CreateGEP(base, *indices, "elementptr");
     delete indices;
     return ptr;
@@ -495,7 +510,7 @@ public:
   virtual llvm::Value *codegen() override
   {
     std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
-    indices->push_back(c32(0));
+    // indices->push_back(c32(0));
     llvm::Value *base = object->llvm_get_array_offset(indices);
     std::cout << std::endl << "base: " ;
     base->print(llvm::outs());
@@ -656,7 +671,11 @@ public:
       if(argIt->getType()->isPointerTy()) {
         // if(args->expressions[i]->llvm_get_value_ptr()->getType()->isArrayTy()) {
         // }
-        ArgV.push_back(args->expressions[i]->llvm_get_value_ptr());
+        llvm::Value * ptr = args->expressions[i]->llvm_get_value_ptr();
+        // if(argIt->getType()->getPointerElementType()->isPointerTy()) {
+        //   ptr = Builder.CreateGEP(ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "ptrfromptr");
+        // }
+        ArgV.push_back(ptr);
       } else {
         ArgV.push_back(args->expressions[i]->codegen());
       }
@@ -1337,18 +1356,29 @@ public:
           return i32->getPointerTo();
         }
         if(param_type->getDimensions().empty() && param_type->getMissingFirstDimension() == true) {
-          return llvm::ArrayType::get(i32, 1)->getPointerTo();
+          return i32->getPointerTo()->getPointerTo();
         }
         if(param_type->getMissingFirstDimension() == false) {
           llvm::Type *arrayType = i32;
           std::vector<int> dimensions = param_type->getDimensions();
           std::reverse(dimensions.begin(), dimensions.end()); 
           for(unsigned dimension : dimensions) {
+            // bypass fist dimension
+            if(dimension == dimensions.back()) {
+              std::cout << "bypassing first dimension" << dimension << std::endl;
+              continue;
+            }
             arrayType = llvm::ArrayType::get(arrayType, dimension);
           }
-          std::cout << "arrayType: ";
-          arrayType->print(llvm::outs());
-          std::cout << std::endl;
+          return arrayType->getPointerTo();
+        }
+        else { //missing first dimension
+          llvm::Type *arrayType = i32;
+          std::vector<int> dimensions = param_type->getDimensions();
+          std::reverse(dimensions.begin(), dimensions.end()); 
+          for(unsigned dimension : dimensions) {
+            arrayType = llvm::ArrayType::get(arrayType, dimension);
+          }
           return arrayType->getPointerTo();
         }
       }
@@ -1782,7 +1812,7 @@ public:
     Builder.SetInsertPoint(L1);
 
     //handle variable declarations
-    std::vector<llvm::AllocaInst *> OldBindings;
+    std::vector<llvm::Value *> OldBindings;
     std::vector<std::string> DeclaredVariables;
 
     //handle function declarations
@@ -1804,11 +1834,17 @@ public:
       if(ld->isVariableDefinition()) {
         std::string var_name = ld->get_variable_name();
         llvm::Type *var_type = ld->get_llvm_variable_type();
-        llvm::AllocaInst *alloca = Builder.CreateAlloca(var_type, nullptr, var_name);
+        llvm::Value *alloca = Builder.CreateAlloca(var_type, nullptr, var_name);
         // llvm::Value *init = ld->get_init_value();
         // Builder.CreateStore(init, alloca);
         // OldBindings.push_back(NamedValues[var_name]);
         // DeclaredVariables.push_back(var_name);
+        if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isArrayTy()) {
+          std::cout << "this is america" << std::endl;
+          std::cout << var_name << std::endl;
+          alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
+          alloca->print(llvm::outs());
+        }
         NamedValues[var_name] = alloca;
       }
       else {
