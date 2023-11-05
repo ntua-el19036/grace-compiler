@@ -1,82 +1,17 @@
-$$ fun mymain() : nothing
-    fun nested(): int
-        fun nested(): int
-        {
-            return 3;
-        }
-    {   $ nested1
-        nested();
-        return 1;
-    }
-    fun inner(): nothing
-        fun nested(): int
-        {
-            return 2;
-        }
-    {   $ inner
-        nested();
-        return;
-    }
-{   $ mymain
-    nested();
-} 
-
 fun main() : nothing
     var x:int[2][3][4];
-    var z:int;
-    fun mimo(ref a:int[]):nothing 
-        var mystring : char[3];
-        {
-            mystring <- "ab";
-            writeString(mystring);
-        writeInteger(10);
-        return;
-        }
-    fun inner(ref k:int[2][3][4]; ref m:int): nothing
+    var y:int[2];
+    fun inner(ref k:int[]; ref z:int): nothing
         var y:int;
         {
-            y <- k[1][2][3] + k[0][1][2];
-            y <- x[1][2][3];
-            x[1][2][3] <- y;
-            k[1][2][3] <- y;
+            $y <- k[2];
+            $k[2] <- y;
+            $y <- x[10][2][3];
+            $z <- 2;
+            $k[2] <- z;
             return;
         }
 { $ main
-    $x[1] <- 1;
-    $x[0] <- 2;
-    x[1][2][3] <- 1;
-    inner(x, z);
-    return;
-}$$
-fun main() : nothing 
-    var x:int[2][3][4];
-    fun inner(ref k:int[][3][4]): nothing
-        var y:int;
-        {
-            y <- k[5][2][3];
-            k[1][2][3] <- y;
-            $y <- x[1][2][3];
-            return;
-        }
-{
-    x[1][2][3] <- 1;
-    $inner(x);
+    inner(y, y[1]);
     return;
 }
-$$
-fun main() : nothing
-    var x:int[2][3];
-    var y:int;
-    var z:int;
-    fun inner() : int { return 1;}
-    {
-        x[1][2] <- inner();
-        y <- x[1][2];
-        x[1][2] <- y;
-        x[3] <- x[5];
-        z <- inner();
-        x[0][1] <- z - y;
-        x[0][0] <- z + y;
-        return;
-        }
-$$
