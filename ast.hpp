@@ -367,7 +367,7 @@ public:
       return Builder.CreateLoad(ptr, *var);
     }
     if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isArrayTy()) {
-      llvm::Value *ptr = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0),c32(0)}), "firstelementptr");
+      llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0), "firstelementptr");
       return ptr;
     }
     llvm::Value *GEP = Builder.CreateGEP(alloca, c32(0));
