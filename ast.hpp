@@ -51,7 +51,7 @@ public:
 
     // Initialize library functions
     llvm::FunctionType *writeInteger_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i64}, false);
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i32}, false);
     TheWriteInteger =
       llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage, "writeInteger", TheModule.get());
     llvm::FunctionType *writeString_type =
@@ -522,9 +522,9 @@ public:
     std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
     // indices->push_back(c32(0));
     llvm::Value *base = object->llvm_get_array_offset(indices);
-    std::cout << std::endl << "base: " ;
-    base->print(llvm::outs());
-    std::cout << std::endl;
+    //std::cout << std::endl << "base: " ;
+    //base->print(llvm::outs());
+    //std::cout << std::endl;
     indices->push_back(position->codegen());
     if(base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
       base = Builder.CreateLoad(base, "array"); //this is dumb, it loads the whole array, oh well
@@ -674,6 +674,7 @@ public:
     if(!CalleeF) {
       yyerror2("Unknown function referenced", line_number);
     }
+    //std::cout << "CalleeF: " << CalleeF->args()->print() << std::endl;
     //maybe check argsize
     llvm::Function::arg_iterator argIt = CalleeF->arg_begin();
     std::vector<llvm::Value *> ArgV;
@@ -681,7 +682,6 @@ public:
       if(argIt->getType()->isPointerTy()) {
         // if(args->expressions[i]->llvm_get_value_ptr()->getType()->isArrayTy()) {
         // }
-        std::cout << "arg is pointer" << std::endl;
         llvm::Value * ptr = args->expressions[i]->llvm_get_value_ptr(true);
         // if(argIt->getType()->getPointerElementType()->isPointerTy()) {
         //   ptr = Builder.CreateGEP(ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "ptrfromptr");
@@ -1836,8 +1836,8 @@ public:
         // OldBindings.push_back(NamedValues[var_name]);
         // DeclaredVariables.push_back(var_name);
         if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isArrayTy()) {
-          std::cout << "this is america" << std::endl;
-          std::cout << var_name << std::endl;
+          //std::cout << "this is america" << std::endl;
+          //std::cout << var_name << std::endl;
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
           alloca->print(llvm::outs());
         }
