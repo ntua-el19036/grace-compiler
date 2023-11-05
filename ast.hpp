@@ -101,7 +101,7 @@ protected:
   {
     return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
   }
-  
+
   static std::map<std::string, llvm::Value *> NamedValues;
   // static std::map<std::string, llvm::Function *> NamedFunctions;
 };
@@ -142,7 +142,7 @@ public:
     return 0;
   }
 
-  virtual llvm::Value *llvm_get_value_ptr() {
+  virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) {
     return nullptr;
   };
 
@@ -354,7 +354,7 @@ public:
     return alloca;
   }
 
-  virtual llvm::Value *llvm_get_value_ptr() override
+  virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
     llvm::Value *alloca = NamedValues[*var];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
@@ -434,7 +434,7 @@ public:
     return Builder.CreateLoad(string_ptr, "stringliteral");
   }
 
-  virtual llvm::Value *llvm_get_value_ptr() override
+  virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
     llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
     std::cout << std::endl << "STRING2: " << std::endl;
@@ -460,14 +460,24 @@ public:
     out << "ArrayAccess(" << *object << ", " << *position << ")";
   }
 
-  virtual llvm::Value *llvm_get_value_ptr() override
+  virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
     std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
-    // indices->push_back(c32(0));
     llvm::Value *base = object->llvm_get_array_offset(indices);
     indices->push_back(position->codegen());
-    if(base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
-      base = Builder.CreateLoad(base, "array");
+    int count = 1;
+    llvm::Type *type = base->getType()->getPointerElementType();
+    while (type->isArrayTy())
+    {
+      type = type->getArrayElementType();
+      count++;
+    }
+
+    if (isParam && !(count == indices->size()))
+      indices->insert(indices->begin(), c32(0));
+
+    if (base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
+      base = Builder.CreateLoad(base, "array12312");
     llvm::Value *ptr = Builder.CreateGEP(base, *indices, "elementptr");
     delete indices;
     return ptr;
@@ -671,7 +681,8 @@ public:
       if(argIt->getType()->isPointerTy()) {
         // if(args->expressions[i]->llvm_get_value_ptr()->getType()->isArrayTy()) {
         // }
-        llvm::Value * ptr = args->expressions[i]->llvm_get_value_ptr();
+        std::cout << "arg is pointer" << std::endl;
+        llvm::Value * ptr = args->expressions[i]->llvm_get_value_ptr(true);
         // if(argIt->getType()->getPointerElementType()->isPointerTy()) {
         //   ptr = Builder.CreateGEP(ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "ptrfromptr");
         // }
@@ -1047,7 +1058,7 @@ public:
 
   virtual llvm::Value* codegen() override {
     llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
-    
+
     llvm::BasicBlock *LoopStartBB = llvm::BasicBlock::Create(TheContext, "loopstart", TheFunction);
     llvm::BasicBlock *LoopInsideBB = llvm::BasicBlock::Create(TheContext, "loopin");
     llvm::BasicBlock *LoopEndBB = llvm::BasicBlock::Create(TheContext, "loopend");
@@ -1055,7 +1066,7 @@ public:
     Builder.SetInsertPoint(LoopStartBB);
     llvm::Value *CondV = cond->codegen();
     if(!CondV) return nullptr;
-    
+
     Builder.CreateCondBr(CondV, LoopInsideBB, LoopEndBB);
 
     TheFunction->getBasicBlockList().push_back(LoopInsideBB);
@@ -1129,7 +1140,7 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    llvm::Value* lval = l_value->llvm_get_value_ptr();
+    llvm::Value* lval = l_value->llvm_get_value_ptr(false);
     llvm::Value* rval = expr->codegen();
     Builder.CreateStore(rval, lval);
     return c32(0);
@@ -1352,35 +1363,20 @@ public:
     {
     case DataType::TYPE_int:
       if(passing_type == PassingType::BY_REFERENCE) {
-        if(param_type->getDimensions().empty() && param_type->getMissingFirstDimension() == false) {
+        // if int, or array with 1 unknown dimension
+        if(param_type->getDimensions().empty()) {
           return i32->getPointerTo();
         }
-        if(param_type->getDimensions().empty() && param_type->getMissingFirstDimension() == true) {
-          return i32->getPointerTo()->getPointerTo();
+
+        llvm::Type *arrayType = i32;
+        std::vector<int> dimensions = param_type->getDimensions();
+        std::reverse(dimensions.begin(), dimensions.end());
+        if (!(param_type->getMissingFirstDimension()))
+          dimensions.pop_back();
+        for(unsigned dimension : dimensions) {
+          arrayType = llvm::ArrayType::get(arrayType, dimension);
         }
-        if(param_type->getMissingFirstDimension() == false) {
-          llvm::Type *arrayType = i32;
-          std::vector<int> dimensions = param_type->getDimensions();
-          std::reverse(dimensions.begin(), dimensions.end()); 
-          for(unsigned dimension : dimensions) {
-            // bypass fist dimension
-            if(dimension == dimensions.back()) {
-              std::cout << "bypassing first dimension" << dimension << std::endl;
-              continue;
-            }
-            arrayType = llvm::ArrayType::get(arrayType, dimension);
-          }
-          return arrayType->getPointerTo();
-        }
-        else { //missing first dimension
-          llvm::Type *arrayType = i32;
-          std::vector<int> dimensions = param_type->getDimensions();
-          std::reverse(dimensions.begin(), dimensions.end()); 
-          for(unsigned dimension : dimensions) {
-            arrayType = llvm::ArrayType::get(arrayType, dimension);
-          }
-          return arrayType->getPointerTo();
-        }
+        return arrayType->getPointerTo();
       }
       return i32;
     case DataType::TYPE_char:
@@ -1467,10 +1463,10 @@ public:
     delete id;
     delete paramlist;
   }
-  
+
   int line_number = 0;
   int get_line_number() const {return line_number;}
-  
+
   void printOn(std::ostream &out) const override
   {
     out << "Header(" << *id << ": " << returntype;
@@ -1523,7 +1519,7 @@ public:
     }
     st.insert_function(*id, returntype, std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>>(), line_number);
   }
-  
+
   virtual void sem() override
   {
     std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> param_types;
@@ -1740,7 +1736,7 @@ public:
   }
 
   virtual bool isVariableDefinition() const override { return false; }
-  
+
   virtual void sem() override
   {
     header->declare();
