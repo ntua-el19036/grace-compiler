@@ -430,14 +430,12 @@ public:
   {
     llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
     Builder.CreateGEP(string_ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "stringptr");
-    std::cout << std::endl << "STRING1: " << std::endl;
     return Builder.CreateLoad(string_ptr, "stringliteral");
   }
 
   virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
     llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
-    std::cout << std::endl << "STRING2: " << std::endl;
     return Builder.CreateGEP(string_ptr, c32(0), "stringptr");
   }
 
@@ -465,7 +463,7 @@ public:
     std::vector<llvm::Value *> *indices = new std::vector<llvm::Value *>();
     llvm::Value *base = object->llvm_get_array_offset(indices);
     indices->push_back(position->codegen());
-    int count = 1;
+    unsigned long int count = 1;
     llvm::Type *type = base->getType()->getPointerElementType();
     while (type->isArrayTy())
     {
@@ -1359,34 +1357,40 @@ public:
 
   llvm::Type *get_llvm_type() const {
     DataType type = param_type->getDataType();
+    llvm::Type *baseType;
     switch (type)
     {
     case DataType::TYPE_int:
-      if(passing_type == PassingType::BY_REFERENCE) {
-        // if int, or array with 1 unknown dimension
-        if(param_type->getDimensions().empty()) {
-          return i32->getPointerTo();
-        }
-
-        llvm::Type *arrayType = i32;
-        std::vector<int> dimensions = param_type->getDimensions();
-        std::reverse(dimensions.begin(), dimensions.end());
-        if (!(param_type->getMissingFirstDimension()))
-          dimensions.pop_back();
-        for(unsigned dimension : dimensions) {
-          arrayType = llvm::ArrayType::get(arrayType, dimension);
-        }
-        return arrayType->getPointerTo();
-      }
-      return i32;
-    case DataType::TYPE_char:
-      if(passing_type == PassingType::BY_REFERENCE)
-        return i8->getPointerTo();
-      return i8;
-    case DataType::TYPE_nothing:
-      return llvm::Type::getVoidTy(TheContext);
+    {
+      baseType = i32;
+      break;
     }
-    return nullptr;
+    case DataType::TYPE_char:
+    {
+      baseType = i8;
+      break;
+    }
+    case DataType::TYPE_nothing:
+      {
+        baseType = llvm::Type::getVoidTy(TheContext);
+        break;
+      }
+    }
+    if(passing_type == PassingType::BY_REFERENCE) {
+      // if not-array, or array with 1 dimension which is unknown at compile time
+      if(param_type->getDimensions().empty()) {
+        return baseType->getPointerTo();
+      }
+      std::vector<int> dimensions = param_type->getDimensions();
+      std::reverse(dimensions.begin(), dimensions.end());
+      if (!(param_type->getMissingFirstDimension()))
+        dimensions.pop_back();
+      for(unsigned dimension : dimensions) {
+        baseType = llvm::ArrayType::get(baseType, dimension);
+      }
+      return baseType->getPointerTo();
+    }
+    return baseType;
   }
 
   virtual llvm::Value *codegen() override {
@@ -1802,6 +1806,7 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
+    //get outer function
     llvm::BasicBlock *OuterBlock = Builder.GetInsertBlock();
     llvm::Function *TheFunction = header->codegen();
     llvm::BasicBlock *L1 = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
@@ -1853,7 +1858,15 @@ public:
     for (unsigned i = 0, e = DeclaredVariables.size(); i != e; ++i) {
       NamedValues[DeclaredVariables[i]] = OldBindings[i];
     }
+    if(Builder.GetInsertBlock()->getTerminator() == nullptr) {
+      Builder.CreateRetVoid();
+    }
     Builder.SetInsertPoint(OuterBlock);
+    if(OuterBlock->getParent()->getName() == "main") {
+      Builder.CreateCall(TheFunction);
+    }
+    
+
     // TheFPM->run(*TheFunction);
     return nullptr;
   }
