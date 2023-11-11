@@ -429,14 +429,14 @@ public:
   virtual llvm::Value *codegen() override
   {
     llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
-    Builder.CreateGEP(string_ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "stringptr");
-    return Builder.CreateLoad(string_ptr, "stringliteral");
+    return Builder.CreateGEP(string_ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "stringptr");
+    // return Builder.CreateLoad(string_ptr, "stringliteral");
   }
 
   virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
     llvm::Value *string_ptr = Builder.CreateGlobalString(*stringval, "string");
-    return Builder.CreateGEP(string_ptr, c32(0), "stringptr");
+    return Builder.CreateGEP(string_ptr, std::vector<llvm::Value *>({c32(0), c32(0)}), "stringptr");
   }
 
 private:
@@ -1844,7 +1844,7 @@ public:
           //std::cout << "this is america" << std::endl;
           //std::cout << var_name << std::endl;
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
-          alloca->print(llvm::outs());
+          // alloca->print(llvm::outs());
         }
         NamedValues[var_name] = alloca;
       }
@@ -1876,3 +1876,5 @@ private:
   LocalDefinitionList *definition_list;
   Block *block;
 };
+
+
