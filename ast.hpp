@@ -1844,7 +1844,7 @@ public:
           //std::cout << "this is america" << std::endl;
           //std::cout << var_name << std::endl;
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
-          alloca->print(llvm::outs());
+          //alloca->print(llvm::outs());
         }
         NamedValues[var_name] = alloca;
       }
