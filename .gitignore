@@ -9,6 +9,9 @@ parser.cpp
 parser.o
 
 *.o
+*.s
+*.ll
+a.out
 
 .vscode/
 test/
