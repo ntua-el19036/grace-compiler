@@ -1,17 +1,4 @@
-fun main() : nothing
-    var x:int[2][3][4];
-    var y:int[2];
-    fun inner(ref k:int[]; ref z:int): nothing
-        var y:int;
-        {
-            $y <- k[2];
-            $k[2] <- y;
-            $y <- x[10][2][3];
-            $z <- 2;
-            $k[2] <- z;
-            return;
-        }
-{ $ main
-    inner(y, y[1]);
-    return;
+fun hello () : nothing
+{
+    writeInteger(42);
 }
