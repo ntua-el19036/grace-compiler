@@ -1038,13 +1038,16 @@ public:
 
     TheFunction->getBasicBlockList().push_back(ElseBB);
     Builder.SetInsertPoint(ElseBB);
-    llvm::Value *ElseV = stmt2->codegen();
-    if(!ElseV) return nullptr;
-
+    if(stmt2 != nullptr) {
+      llvm::Value *ElseV = stmt2->codegen();
+      if(!ElseV) return nullptr;
+    }
     if(ElseBB->getTerminator() == nullptr)
       Builder.CreateBr(MergeBB);
     ElseBB = Builder.GetInsertBlock();
 
+    if(Builder.GetInsertBlock()->getTerminator() == nullptr)
+      Builder.CreateBr(MergeBB);
     TheFunction->getBasicBlockList().push_back(MergeBB);
     Builder.SetInsertPoint(MergeBB);
     // llvm::PHINode *PN = Builder.CreatePHI(i32, 2, "iftmp");
@@ -1110,6 +1113,8 @@ public:
       Builder.CreateBr(LoopStartBB);
     LoopInsideBB = Builder.GetInsertBlock();
 
+    if(Builder.GetInsertBlock()->getTerminator() == nullptr)
+      Builder.CreateBr(LoopStartBB);
     TheFunction->getBasicBlockList().push_back(LoopEndBB);
     Builder.SetInsertPoint(LoopEndBB);
     return LoopEndBB;
