@@ -50,14 +50,8 @@ public:
 
 
     // Initialize library functions
-    llvm::FunctionType *writeInteger_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i32}, false);
-    TheWriteInteger =
-      llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage, "writeInteger", TheModule.get());
-    llvm::FunctionType *writeString_type =
-      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {llvm::PointerType::get(i8, 0)}, false);
-    TheWriteString =
-      llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage, "writeString", TheModule.get());
+    init_library();
+
     llvm::FunctionType *main_type = llvm::FunctionType::get(i32, {}, false);
     llvm::Function *main =
       llvm::Function::Create(main_type, llvm::Function::ExternalLinkage,
@@ -90,9 +84,6 @@ protected:
   static llvm::Type *i32;
   static llvm::Type *i64; //not used
 
-  static llvm::Function *TheWriteInteger;
-  static llvm::Function *TheWriteString;
-
   static llvm::ConstantInt *c8(char c)
   {
     return llvm::ConstantInt::get(TheContext, llvm::APInt(8, c, true));
@@ -100,6 +91,45 @@ protected:
   static llvm::ConstantInt *c32(int n)
   {
     return llvm::ConstantInt::get(TheContext, llvm::APInt(32, n, true));
+  }
+
+  void init_library() {
+    llvm::FunctionType *writeInteger_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i32}, false);
+    llvm::Function::Create(writeInteger_type, llvm::Function::ExternalLinkage, "writeInteger", TheModule.get());
+    llvm::FunctionType *writeString_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {llvm::PointerType::get(i8, 0)}, false);
+    llvm::Function::Create(writeString_type, llvm::Function::ExternalLinkage, "writeString", TheModule.get());
+    llvm::FunctionType *writeChar_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i8}, false);
+    llvm::Function::Create(writeChar_type, llvm::Function::ExternalLinkage, "writeChar", TheModule.get());
+    llvm::FunctionType *readInteger_type =
+      llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), {}, false);
+    llvm::Function::Create(readInteger_type, llvm::Function::ExternalLinkage, "readInteger", TheModule.get());
+    llvm::FunctionType *readString_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {i32, llvm::PointerType::get(i8, 0)}, false);
+    llvm::Function::Create(readString_type, llvm::Function::ExternalLinkage, "readString", TheModule.get());
+    llvm::FunctionType *readChar_type =
+      llvm::FunctionType::get(llvm::Type::getInt8Ty(TheContext), {}, false);
+    llvm::Function::Create(readChar_type, llvm::Function::ExternalLinkage, "readChar", TheModule.get());
+    llvm::FunctionType *ascii_type =
+      llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), {i8}, false);
+    llvm::Function::Create(ascii_type, llvm::Function::ExternalLinkage, "ascii", TheModule.get());
+    llvm::FunctionType *chr_type =
+      llvm::FunctionType::get(llvm::Type::getInt8Ty(TheContext), {i32}, false);
+    llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage, "chr", TheModule.get());
+    llvm::FunctionType *strlen_type =
+      llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), {llvm::PointerType::get(i8, 0)}, false);
+    llvm::Function::Create(strlen_type, llvm::Function::ExternalLinkage, "strlen", TheModule.get());
+    llvm::FunctionType *strcmp_type =
+      llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+    llvm::Function::Create(strcmp_type, llvm::Function::ExternalLinkage, "strcmp", TheModule.get());
+    llvm::FunctionType *strcpy_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+    llvm::Function::Create(strcpy_type, llvm::Function::ExternalLinkage, "strcpy", TheModule.get());
+    llvm::FunctionType *strcat_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), {llvm::PointerType::get(i8, 0), llvm::PointerType::get(i8, 0)}, false);
+    llvm::Function::Create(strcat_type, llvm::Function::ExternalLinkage, "strcat", TheModule.get());
   }
 
   static std::map<std::string, llvm::Value *> NamedValues;
@@ -1001,7 +1031,9 @@ public:
     Builder.SetInsertPoint(ThenBB);
     llvm::Value *ThenV = stmt1->codegen();
     if(!ThenV) return nullptr;
-    Builder.CreateBr(MergeBB);
+
+    if(ThenBB->getTerminator() == nullptr)
+      Builder.CreateBr(MergeBB);
     ThenBB = Builder.GetInsertBlock();
 
     TheFunction->getBasicBlockList().push_back(ElseBB);
@@ -1009,7 +1041,8 @@ public:
     llvm::Value *ElseV = stmt2->codegen();
     if(!ElseV) return nullptr;
 
-    Builder.CreateBr(MergeBB);
+    if(ElseBB->getTerminator() == nullptr)
+      Builder.CreateBr(MergeBB);
     ElseBB = Builder.GetInsertBlock();
 
     TheFunction->getBasicBlockList().push_back(MergeBB);
@@ -1061,17 +1094,20 @@ public:
     llvm::BasicBlock *LoopInsideBB = llvm::BasicBlock::Create(TheContext, "loopin");
     llvm::BasicBlock *LoopEndBB = llvm::BasicBlock::Create(TheContext, "loopend");
 
+    Builder.CreateBr(LoopStartBB);
     Builder.SetInsertPoint(LoopStartBB);
     llvm::Value *CondV = cond->codegen();
     if(!CondV) return nullptr;
 
-    Builder.CreateCondBr(CondV, LoopInsideBB, LoopEndBB);
+    if(LoopStartBB->getTerminator() == nullptr)
+      Builder.CreateCondBr(CondV, LoopInsideBB, LoopEndBB);
 
     TheFunction->getBasicBlockList().push_back(LoopInsideBB);
     Builder.SetInsertPoint(LoopInsideBB);
     llvm::Value *InsideV = stmt->codegen();
     if(!InsideV) return nullptr;
-    Builder.CreateBr(LoopStartBB);
+    if(LoopInsideBB->getTerminator() == nullptr)
+      Builder.CreateBr(LoopStartBB);
     LoopInsideBB = Builder.GetInsertBlock();
 
     TheFunction->getBasicBlockList().push_back(LoopEndBB);
@@ -1747,6 +1783,7 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
+    header->codegen();
     return nullptr;
   }
 
@@ -1808,7 +1845,14 @@ public:
   virtual llvm::Value *codegen() override {
     //get outer function
     llvm::BasicBlock *OuterBlock = Builder.GetInsertBlock();
-    llvm::Function *TheFunction = header->codegen();
+    llvm::Function *TheFunction = TheModule->getFunction(header->get_name());
+    if(TheFunction == nullptr) {
+      // std::cout << "Function " << header->get_name() << " was not declared" << std::endl;
+      TheFunction = header->codegen();
+    }
+    else {
+      // std::cout << "Function " << header->get_name() << " was declared" << std::endl;
+    }
     llvm::BasicBlock *L1 = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
     Builder.SetInsertPoint(L1);
 
@@ -1859,7 +1903,12 @@ public:
       NamedValues[DeclaredVariables[i]] = OldBindings[i];
     }
     if(Builder.GetInsertBlock()->getTerminator() == nullptr) {
-      Builder.CreateRetVoid();
+      if(header->get_return_type() == DataType::TYPE_nothing)
+        Builder.CreateRetVoid();
+      if(header->get_return_type() == DataType::TYPE_int)
+        Builder.CreateRet(c32(0));
+      if(header->get_return_type() == DataType::TYPE_char)
+        Builder.CreateRet(c8(0));
     }
     Builder.SetInsertPoint(OuterBlock);
     if(OuterBlock->getParent()->getName() == "main") {
@@ -1876,5 +1925,3 @@ private:
   LocalDefinitionList *definition_list;
   Block *block;
 };
-
-
