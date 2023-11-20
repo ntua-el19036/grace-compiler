@@ -652,6 +652,21 @@ public:
     return true;
   }
 
+  bool is_library_function () {
+    return strcmp(id->c_str(), "writeInteger") == 0 ||
+           strcmp(id->c_str(), "writeString") == 0 ||
+           strcmp(id->c_str(), "writeChar") == 0 ||
+           strcmp(id->c_str(), "readInteger") == 0 ||
+           strcmp(id->c_str(), "readString") == 0 ||
+           strcmp(id->c_str(), "readChar") == 0 ||
+           strcmp(id->c_str(), "ascii") == 0 ||
+           strcmp(id->c_str(), "chr") == 0 ||
+           strcmp(id->c_str(), "strlen") == 0 ||
+           strcmp(id->c_str(), "strcmp") == 0 ||
+           strcmp(id->c_str(), "strcpy") == 0 ||
+           strcmp(id->c_str(), "strcat") == 0;
+  }
+
   virtual void sem() override
   {
     STEntry *entry = st.lookup(*id);
@@ -697,7 +712,11 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    llvm::Function *CalleeF = TheModule->getFunction(*id);
+    std::string function_name = std::string("user_") + *id;
+    if(this->is_library_function()) {
+      function_name = *id;
+    }
+    llvm::Function *CalleeF = TheModule->getFunction(function_name);
     // llvm::Function *CalleeF = NamedFunctions[*id];
     if(!CalleeF) {
       yyerror2("Unknown function referenced", line_number);
@@ -1627,7 +1646,8 @@ public:
 
   virtual llvm::Function *codegen() override {
     llvm::FunctionType *FT = get_llvm_function_type();
-    llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, *id, TheModule.get());
+    std::string function_name = std::string("user_") + *id;
+    llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, function_name, TheModule.get());
     //set argument names
     int i = 0;
     for (auto &Arg : F->args()) {
@@ -1850,7 +1870,8 @@ public:
   virtual llvm::Value *codegen() override {
     //get outer function
     llvm::BasicBlock *OuterBlock = Builder.GetInsertBlock();
-    llvm::Function *TheFunction = TheModule->getFunction(header->get_name());
+    std::string function_name = std::string("user_") + header->get_name();
+    llvm::Function *TheFunction = TheModule->getFunction(function_name);
     if(TheFunction == nullptr) {
       // std::cout << "Function " << header->get_name() << " was not declared" << std::endl;
       TheFunction = header->codegen();
@@ -1866,6 +1887,7 @@ public:
     std::vector<std::string> DeclaredVariables;
 
     //handle function declarations
+    // *** not used ***
     std::vector<llvm::Function *> OldFunctionBindings;
     std::vector<std::string> DeclaredFunctions;
 
