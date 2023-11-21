@@ -114,7 +114,13 @@ protected:
     llvm::Function::Create(readChar_type, llvm::Function::ExternalLinkage, "readChar", TheModule.get());
     llvm::FunctionType *ascii_type =
       llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), {i8}, false);
-    llvm::Function::Create(ascii_type, llvm::Function::ExternalLinkage, "ascii", TheModule.get());
+       llvm::Function *ord = llvm::Function::Create(ascii_type, llvm::Function::ExternalLinkage, "ord", TheModule.get());
+    llvm::Function *ascii = llvm::Function::Create(ascii_type, llvm::Function::ExternalLinkage, "ascii", TheModule.get());
+    llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", ascii);
+    Builder.SetInsertPoint(BB);
+    llvm::Value *arg = ascii->arg_begin();
+    llvm::Value *result = Builder.CreateCall(ord, arg);  
+    Builder.CreateRet(result);
     llvm::FunctionType *chr_type =
       llvm::FunctionType::get(llvm::Type::getInt8Ty(TheContext), {i32}, false);
     llvm::Function::Create(chr_type, llvm::Function::ExternalLinkage, "chr", TheModule.get());
@@ -659,6 +665,7 @@ public:
            strcmp(id->c_str(), "readInteger") == 0 ||
            strcmp(id->c_str(), "readString") == 0 ||
            strcmp(id->c_str(), "readChar") == 0 ||
+           strcmp(id->c_str(), "ord") == 0 ||
            strcmp(id->c_str(), "ascii") == 0 ||
            strcmp(id->c_str(), "chr") == 0 ||
            strcmp(id->c_str(), "strlen") == 0 ||
@@ -902,7 +909,33 @@ public:
     case 'g':
       return Builder.CreateICmpSGE(l, r, "getmp");
     case '&':
-      return Builder.CreateAnd(l, r, "andtmp");
+      // return Builder.CreateAnd(l, r, "andtmp");
+      // short-circuit and
+      {
+        llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock *ThenBB = llvm::BasicBlock::Create(TheContext, "andthen", TheFunction);
+        llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "andelse");
+        llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(TheContext, "andcont");
+
+        Builder.CreateCondBr(l, ThenBB, ElseBB); //if l is false, go to else
+        Builder.SetInsertPoint(ThenBB);
+        llvm::Value *AndV = Builder.CreateICmpEQ(l, r, "andtmp"); //l is true, return right
+        Builder.CreateBr(MergeBB);
+        ThenBB = Builder.GetInsertBlock();
+
+        TheFunction->getBasicBlockList().push_back(ElseBB);
+        Builder.SetInsertPoint(ElseBB);
+        llvm::Value *ElseV = Builder.getFalse(); //l is false, return false
+        Builder.CreateBr(MergeBB);
+        ElseBB = Builder.GetInsertBlock();
+
+        TheFunction->getBasicBlockList().push_back(MergeBB);
+        Builder.SetInsertPoint(MergeBB);
+        llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "andphi");
+        PN->addIncoming(AndV, ThenBB);
+        PN->addIncoming(ElseV, ElseBB);
+        return PN;
+      }
     case '|':
       return Builder.CreateOr(l, r, "ortmp");
     }
@@ -1122,6 +1155,8 @@ public:
     if(!CondV) return nullptr;
 
     if(LoopStartBB->getTerminator() == nullptr)
+      Builder.CreateCondBr(CondV, LoopInsideBB, LoopEndBB);
+    if(Builder.GetInsertBlock()->getTerminator() == nullptr)
       Builder.CreateCondBr(CondV, LoopInsideBB, LoopEndBB);
 
     TheFunction->getBasicBlockList().push_back(LoopInsideBB);
