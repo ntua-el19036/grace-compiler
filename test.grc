@@ -1,4 +1,22 @@
 fun hello () : nothing
+    var x:int;
+    fun identity(y:int) : int
+    {
+        writeString("hello\n");
+        return y;
+    }
 {
-    writeInteger(42);
+    x <- 0;
+    if identity(1)=0 or identity(2)=1 then {
+        x <- 1;
+    } else {
+        x <- 2;
+    }
+    if(x=1) then {
+        writeString("x is 1\n");
+    } else {
+        writeString("x is not 1\n");
+    }
+    writeInteger(x);
+    writeChar('\n');
 }

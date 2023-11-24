@@ -872,8 +872,8 @@ public:
       dimensions = left->get_dimensions();
   }
 
-  virtual llvm::Value *codegen() override
-  {
+  //for non short-cirtuiting binary operators
+  virtual llvm::Value *binop_basic_codegen() {
     llvm::Value *l = left->codegen();
     while(l->getType()->isPointerTy()) {
       llvm::Value *tmp = Builder.CreateGEP(l, c32(0));
@@ -908,10 +908,24 @@ public:
       return Builder.CreateICmpSLE(l, r, "letmp");
     case 'g':
       return Builder.CreateICmpSGE(l, r, "getmp");
+    }
+    return nullptr;
+  }
+
+  virtual llvm::Value *codegen() override
+  {
+    switch (op)
+    {
     case '&':
       // return Builder.CreateAnd(l, r, "andtmp");
       // short-circuit and
       {
+        llvm::Value *l = left->codegen();
+        while(l->getType()->isPointerTy()) {
+          llvm::Value *tmp = Builder.CreateGEP(l, c32(0));
+          l = Builder.CreateLoad(tmp);
+        }
+
         llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
         llvm::BasicBlock *ThenBB = llvm::BasicBlock::Create(TheContext, "andthen", TheFunction);
         llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "andelse");
@@ -919,6 +933,13 @@ public:
 
         Builder.CreateCondBr(l, ThenBB, ElseBB); //if l is false, go to else
         Builder.SetInsertPoint(ThenBB);
+        
+        llvm::Value *r = right->codegen();
+        while(r->getType()->isPointerTy()) {
+          llvm::Value *tmp = Builder.CreateGEP(r, c32(0));
+          r = Builder.CreateLoad(tmp);
+        }
+
         llvm::Value *AndV = Builder.CreateICmpEQ(l, r, "andtmp"); //l is true, return right
         Builder.CreateBr(MergeBB);
         ThenBB = Builder.GetInsertBlock();
@@ -937,7 +958,46 @@ public:
         return PN;
       }
     case '|':
-      return Builder.CreateOr(l, r, "ortmp");
+      {
+        llvm::Value *l = left->codegen();
+        while(l->getType()->isPointerTy()) {
+          llvm::Value *tmp = Builder.CreateGEP(l, c32(0));
+          l = Builder.CreateLoad(tmp);
+        }
+
+        llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock *ThenBB = llvm::BasicBlock::Create(TheContext, "orthen", TheFunction);
+        llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "orelse");
+        llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(TheContext, "orcont");
+
+        Builder.CreateCondBr(l, ElseBB, ThenBB); //if l is false, go to then
+        Builder.SetInsertPoint(ThenBB);
+        
+        llvm::Value *r = right->codegen();
+        while(r->getType()->isPointerTy()) {
+          llvm::Value *tmp = Builder.CreateGEP(r, c32(0));
+          r = Builder.CreateLoad(tmp);
+        }
+
+        llvm::Value *OrV = Builder.CreateICmpNE(l, r, "ortmp"); //l is false, return right
+        Builder.CreateBr(MergeBB);
+        ThenBB = Builder.GetInsertBlock();
+
+        TheFunction->getBasicBlockList().push_back(ElseBB);
+        Builder.SetInsertPoint(ElseBB);
+        llvm::Value *ElseV = Builder.getTrue();  //l is true, return true
+        Builder.CreateBr(MergeBB);
+        ElseBB = Builder.GetInsertBlock();
+
+        TheFunction->getBasicBlockList().push_back(MergeBB);
+        Builder.SetInsertPoint(MergeBB);
+        llvm::PHINode *PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "orphi");
+        PN->addIncoming(OrV, ThenBB);
+        PN->addIncoming(ElseV, ElseBB);
+        return PN;
+      }
+    default:
+      return binop_basic_codegen();
     }
     return nullptr;
   }
