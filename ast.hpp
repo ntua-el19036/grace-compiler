@@ -1711,14 +1711,40 @@ public:
   }
 
   llvm::FunctionType *get_llvm_function_type() {
+    std::vector<llvm::Type *> locals_params(NamedValues.size());
+    std::cout << "function: " << *id << std::endl;
+    std::cout << "NamedValues.size(): " << NamedValues.size() << std::endl;
+    int i = 0;
+    for(auto &it : NamedValues) {
+      std::cout << "it.first: " << it.first << std::endl << "it.second->getType(): ";
+      // std::cout << "it.second: " << it.second << std::endl;
+      locals_params[i++] = it.second->getType();
+      it.second->getType()->print(llvm::outs());
+      std::cout << std::endl;
+    }
     if(paramlist == nullptr) {
       switch(returntype) {
         case DataType::TYPE_int:
-          return llvm::FunctionType::get(i32, false);
+          {
+            if(locals_params.empty())
+              return llvm::FunctionType::get(i32, false);
+            else
+              return llvm::FunctionType::get(i32, locals_params, false);
+          }
         case DataType::TYPE_char:
-          return llvm::FunctionType::get(i8, false);
+          {
+            if(locals_params.empty())
+              return llvm::FunctionType::get(i8, false);
+            else
+              return llvm::FunctionType::get(i8, locals_params, false);
+          }
         case DataType::TYPE_nothing:
-          return llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), false);
+          {
+            if(locals_params.empty())
+              return llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), false);
+            else
+              return llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), locals_params, false);
+          }
       }
     }
     else {
@@ -1727,13 +1753,17 @@ public:
       {
         llvm_param_types[i] = paramlist->param_list[i]->get_llvm_type();
       }
+      std::vector<llvm::Type *> argument_types(locals_params.size() + llvm_param_types.size());
+      std::copy(llvm_param_types.begin(), llvm_param_types.end(), argument_types.begin());
+      std::copy(locals_params.begin(), locals_params.end(), argument_types.begin() + llvm_param_types.size());
+      std::cout << "argument_types.size(): " << argument_types.size() << std::endl;
       switch(returntype) {
         case DataType::TYPE_int:
-          return llvm::FunctionType::get(i32, llvm_param_types, false);
+          return llvm::FunctionType::get(i32, argument_types, false);
         case DataType::TYPE_char:
-          return llvm::FunctionType::get(i8, llvm_param_types, false);
+          return llvm::FunctionType::get(i8, argument_types, false);
         case DataType::TYPE_nothing:
-          return llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), llvm_param_types, false);
+          return llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), argument_types, false);
       }
     }
     return nullptr;
@@ -1744,10 +1774,24 @@ public:
     std::string function_name = std::string("user_") + *id;
     llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, function_name, TheModule.get());
     //set argument names
-    int i = 0;
+    unsigned long int i = 0;
+    //TODO : UPDATE THIS
+    std::cout << "here" << std::endl;
+    FT->print(llvm::outs());
+    std:: cout << F->arg_size() << std::endl;
     for (auto &Arg : F->args()) {
+      std::cout << "arg: " << i << std::endl;
+      if(paramlist == nullptr) {
+        Arg.setName(std::string("arg") + std::to_string(i++));
+        continue;
+      }
+      if(i >= paramlist->param_list.size()) {
+        Arg.setName(std::string("arg") + std::to_string(i++));
+        continue;
+      }
       Arg.setName(paramlist->param_list[i++]->get_param_name());
     }
+    std::cout << "function header done: " << function_name << std::endl;
     return F;
   }
 
@@ -1979,8 +2023,15 @@ public:
 
     //handle variable declarations
     std::vector<llvm::Value *> OldBindings;
+    std::vector<std::string> OldNames;
     std::vector<std::string> DeclaredVariables;
 
+    for(auto &value : NamedValues) {
+      OldBindings.push_back(value.second);
+      OldNames.push_back(value.first);
+      // DeclaredVariables.push_back(value.first);
+    }
+    NamedValues.clear();
     //handle function declarations
     // *** not used ***
     std::vector<llvm::Function *> OldFunctionBindings;
@@ -1992,7 +2043,10 @@ public:
       // llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0));
       Builder.CreateStore(&Arg, alloca);
 
-      OldBindings.push_back(NamedValues[param_name]);
+      if(NamedValues.find(param_name) != NamedValues.end()) {
+        std::cout << "Warning: Param " << param_name << " already exists in NamedValues" << std::endl;
+      }
+      // OldBindings.push_back(NamedValues[param_name]);
       DeclaredVariables.push_back(param_name);
       NamedValues[param_name] = alloca;
     }
@@ -2005,12 +2059,9 @@ public:
         // llvm::Value *init = ld->get_init_value();
         // Builder.CreateStore(init, alloca);
         // OldBindings.push_back(NamedValues[var_name]);
-        // DeclaredVariables.push_back(var_name);
+        DeclaredVariables.push_back(var_name);
         if(alloca->getType()->isPointerTy() && alloca->getType()->getPointerElementType()->isArrayTy()) {
-          //std::cout << "this is america" << std::endl;
-          //std::cout << var_name << std::endl;
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
-          // alloca->print(llvm::outs());
         }
         NamedValues[var_name] = alloca;
       }
@@ -2021,8 +2072,18 @@ public:
     //handle function body
     block->codegen();
     //restore old variable-value bindings
-    for (unsigned i = 0, e = DeclaredVariables.size(); i != e; ++i) {
-      NamedValues[DeclaredVariables[i]] = OldBindings[i];
+
+    // for (unsigned i = 0, e = DeclaredVariables.size(); i != e; ++i) {
+    //   if(OldBindings[i] == nullptr) {
+    //     NamedValues.erase(DeclaredVariables[i]);
+    //   }
+    //   else {
+    //     NamedValues[DeclaredVariables[i]] = OldBindings[i];
+    //   }
+    // }
+    NamedValues.clear();
+    for(unsigned i = 0, e = OldNames.size(); i != e; ++i) {
+      NamedValues[OldNames[i]] = OldBindings[i];
     }
     if(Builder.GetInsertBlock()->getTerminator() == nullptr) {
       if(header->get_return_type() == DataType::TYPE_nothing)
@@ -2037,7 +2098,6 @@ public:
       Builder.CreateCall(TheFunction);
     }
     
-
     // TheFPM->run(*TheFunction);
     return nullptr;
   }

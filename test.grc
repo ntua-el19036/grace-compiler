@@ -1,22 +1,19 @@
 fun hello () : nothing
     var x:int;
-    fun identity(y:int) : int
+    fun f(a:int): nothing
+        var y:int;
+        fun g():nothing{
+            return;
+        }
     {
-        writeString("hello\n");
-        return y;
+        writeString("f\n");
+    }
+    fun f2(): nothing
+    {
+        writeString("f2\n");
     }
 {
     x <- 0;
-    if identity(1)=0 or identity(2)=1 then {
-        x <- 1;
-    } else {
-        x <- 2;
-    }
-    if(x=1) then {
-        writeString("x is 1\n");
-    } else {
-        writeString("x is not 1\n");
-    }
     writeInteger(x);
     writeChar('\n');
 }
