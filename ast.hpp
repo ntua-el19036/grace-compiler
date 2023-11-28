@@ -27,12 +27,25 @@ public:
 
   virtual llvm::Value *codegen() = 0;
 
+  virtual std::string get_translation(std::string local_name) {
+    std::cout << "get_translation: "<< local_name << std::endl;
+    llvm::Function *Current_Function = Builder.GetInsertBlock()->getParent();
+    std::string current_function_name = std::string(Current_Function->getName());
+    while(FunctionTranslationTables[current_function_name]->find(local_name) 
+      == FunctionTranslationTables[current_function_name]->end()) {
+      current_function_name = (*FunctionTranslationTables[current_function_name])[std::string("parent")];
+      Current_Function = TheModule->getFunction(current_function_name);
+    }
+    return (*FunctionTranslationTables[current_function_name])[local_name];
+  }
+
   void llvm_compile_and_dump(bool optimize = true)
   {
     // Initialize
     TheModule = std::make_unique<llvm::Module>("grace program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
     NamedValues = std::map<std::string, llvm::Value *>();
+    FunctionTranslationTables = std::map<std::string, std::map<std::string,std::string> *>();
     // NamedFunctions = std::map<std::string, llvm::Function *>();
     if (optimize)
     {
@@ -139,7 +152,7 @@ protected:
   }
 
   static std::map<std::string, llvm::Value *> NamedValues;
-  // static std::map<std::string, llvm::Function *> NamedFunctions;
+  static std::map<std::string, std::map<std::string,std::string> *> FunctionTranslationTables; 
 };
 
 inline std::ostream &operator<<(std::ostream &out, const AST &t)
@@ -382,7 +395,7 @@ public:
   }
 
   virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> *indices) override {
-    llvm::Value *alloca = NamedValues[*var];
+    llvm::Value *alloca = NamedValues[get_translation(*var)];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -392,7 +405,11 @@ public:
 
   virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
-    llvm::Value *alloca = NamedValues[*var];
+    std::cout << "TRANSLATING: "<< *var
+    << " = " << get_translation(*var) 
+    << std::endl;
+    std::string translation = get_translation(*var);
+    llvm::Value *alloca = NamedValues[translation];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -421,7 +438,7 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    llvm::Value *alloca = NamedValues[*var];
+    llvm::Value *alloca = NamedValues[get_translation(*var)];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -1710,15 +1727,32 @@ public:
     return returntype;
   }
 
+  unsigned long int get_params_size() const
+  {
+    if (paramlist == nullptr)
+      return 0;
+    return paramlist->param_list.size();
+  }
+
   llvm::FunctionType *get_llvm_function_type() {
     std::vector<llvm::Type *> locals_params(NamedValues.size());
     std::cout << "function: " << *id << std::endl;
     std::cout << "NamedValues.size(): " << NamedValues.size() << std::endl;
     int i = 0;
+    llvm::Type *local_value_type;
     for(auto &it : NamedValues) {
       std::cout << "it.first: " << it.first << std::endl << "it.second->getType(): ";
       // std::cout << "it.second: " << it.second << std::endl;
-      locals_params[i++] = it.second->getType();
+      local_value_type = it.second->getType();
+      /* This is to stop adding more pointers to the local type */
+      if(local_value_type->isPointerTy()){
+        if(local_value_type->getPointerElementType()->isPointerTy()){
+          locals_params[i++] = local_value_type->getPointerElementType();
+        }
+        else{
+          locals_params[i++] = local_value_type;
+        }
+      }
       it.second->getType()->print(llvm::outs());
       std::cout << std::endl;
     }
@@ -1776,17 +1810,16 @@ public:
     //set argument names
     unsigned long int i = 0;
     //TODO : UPDATE THIS
-    std::cout << "here" << std::endl;
     FT->print(llvm::outs());
     std:: cout << F->arg_size() << std::endl;
     for (auto &Arg : F->args()) {
       std::cout << "arg: " << i << std::endl;
       if(paramlist == nullptr) {
-        Arg.setName(std::string("arg") + std::to_string(i++));
+        Arg.setName(std::string("local") + std::to_string(i++));
         continue;
       }
       if(i >= paramlist->param_list.size()) {
-        Arg.setName(std::string("arg") + std::to_string(i++));
+        Arg.setName(std::string("local") + std::to_string(i++));
         continue;
       }
       Arg.setName(paramlist->param_list[i++]->get_param_name());
@@ -2025,6 +2058,11 @@ public:
     std::vector<llvm::Value *> OldBindings;
     std::vector<std::string> OldNames;
     std::vector<std::string> DeclaredVariables;
+    FunctionTranslationTables[function_name] = new std::map<std::string, std::string>();
+    std::map<std::string, std::string> *Translations = FunctionTranslationTables[function_name];
+    Translations->insert(std::pair<std::string, std::string>(std::string("parent"), 
+      std::string(OuterBlock->getParent()->getName())));
+    // std::cout << "Parent of " << function_name << " is " << (*Translations)[std::string("parent")] << std::endl;
 
     for(auto &value : NamedValues) {
       OldBindings.push_back(value.second);
@@ -2036,6 +2074,20 @@ public:
     // *** not used ***
     std::vector<llvm::Function *> OldFunctionBindings;
     std::vector<std::string> DeclaredFunctions;
+
+    std::vector<std::string>::iterator it = OldNames.begin();
+    for (auto argIt = TheFunction->arg_begin(); argIt != TheFunction->arg_end(); ++argIt) {
+      llvm::Value *arg = &*argIt;
+      std::string arg_name = std::string(arg->getName());
+      if(argIt < TheFunction->arg_begin() + header->get_params_size()) {
+        (*Translations)[arg_name] = arg_name;
+        continue;
+      }
+      std::cout << "arg_name: " << arg_name << std::endl;
+      std::cout << "OldNames: " << *it << std::endl;
+      (*Translations)[*it] = arg_name;
+      ++it;
+    }
 
     for(auto &Arg : TheFunction->args()) {
       std::string param_name = std::string(Arg.getName());
@@ -2071,16 +2123,7 @@ public:
     }
     //handle function body
     block->codegen();
-    //restore old variable-value bindings
-
-    // for (unsigned i = 0, e = DeclaredVariables.size(); i != e; ++i) {
-    //   if(OldBindings[i] == nullptr) {
-    //     NamedValues.erase(DeclaredVariables[i]);
-    //   }
-    //   else {
-    //     NamedValues[DeclaredVariables[i]] = OldBindings[i];
-    //   }
-    // }
+    
     NamedValues.clear();
     for(unsigned i = 0, e = OldNames.size(); i != e; ++i) {
       NamedValues[OldNames[i]] = OldBindings[i];

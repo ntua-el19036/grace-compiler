@@ -1,11 +1,12 @@
 fun hello () : nothing
     var x:int;
-    fun f(a:int): nothing
-        var y:int;
+    fun f(ref a,b,c:int): nothing
+        $var y:int;
         fun g():nothing{
             return;
         }
     {
+        a<-x;
         writeString("f\n");
     }
     fun f2(): nothing
@@ -13,7 +14,7 @@ fun hello () : nothing
         writeString("f2\n");
     }
 {
-    x <- 0;
-    writeInteger(x);
+    $x <- 0;
+    $writeInteger(x);
     writeChar('\n');
 }
