@@ -1,20 +1,22 @@
 fun hello () : nothing
     var x:int;
-    fun f(ref a,b,c:int): nothing
-        $var y:int;
+    fun f(a:int): nothing
+        var y:int;
         fun g():nothing{
+            writeInteger(x);
+            x<-0;
+            writeInteger(x);
             return;
         }
     {
-        a<-x;
+        g();
         writeString("f\n");
-    }
-    fun f2(): nothing
-    {
-        writeString("f2\n");
+        writeInteger(x);
+        x <-2;
     }
 {
-    $x <- 0;
-    $writeInteger(x);
+    x <- 1;
+    f(x);
+    writeInteger(x);
     writeChar('\n');
 }

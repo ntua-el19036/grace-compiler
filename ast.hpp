@@ -28,7 +28,6 @@ public:
   virtual llvm::Value *codegen() = 0;
 
   virtual std::string get_translation(std::string local_name) {
-    std::cout << "get_translation: "<< local_name << std::endl;
     llvm::Function *Current_Function = Builder.GetInsertBlock()->getParent();
     std::string current_function_name = std::string(Current_Function->getName());
     while(FunctionTranslationTables[current_function_name]->find(local_name) 
@@ -405,9 +404,6 @@ public:
 
   virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
-    std::cout << "TRANSLATING: "<< *var
-    << " = " << get_translation(*var) 
-    << std::endl;
     std::string translation = get_translation(*var);
     llvm::Value *alloca = NamedValues[translation];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
@@ -749,7 +745,33 @@ public:
     //maybe check argsize
     llvm::Function::arg_iterator argIt = CalleeF->arg_begin();
     std::vector<llvm::Value *> ArgV;
+    unsigned long int user_param_count = 0;
+    if(args != nullptr) {
+      user_param_count = args->expressions.size();
+    }
+    std::string caller_function_name = std::string(Builder.GetInsertBlock()->getParent()->getName());
+    
+    std::map<std::string, llvm::Value *>::iterator it = NamedValues.begin();
     for(unsigned i = 0, e = CalleeF->arg_size(); i != e; ++i) {
+      if(i >= user_param_count) { /* local variables */
+        std::string param_name = std::string(argIt->getName());
+        // std::string translation = Expr::get_translation(param_name);
+        
+        if(it->second->getType()->isPointerTy()) {
+          if(it->second->getType()->getPointerElementType()->isPointerTy()) {
+            llvm::Value *ptr = Builder.CreateGEP(it->second, c32(0), "ptrtolocal");
+            ArgV.push_back(Builder.CreateLoad(ptr, param_name));
+          }
+          else {
+            ArgV.push_back(it->second);
+          }
+        }
+        else {
+          ArgV.push_back(it->second);
+        }
+        ++argIt; ++it;
+        continue;
+      }
       if(argIt->getType()->isPointerTy()) {
         // if(args->expressions[i]->llvm_get_value_ptr()->getType()->isArrayTy()) {
         // }
@@ -1736,12 +1758,9 @@ public:
 
   llvm::FunctionType *get_llvm_function_type() {
     std::vector<llvm::Type *> locals_params(NamedValues.size());
-    std::cout << "function: " << *id << std::endl;
-    std::cout << "NamedValues.size(): " << NamedValues.size() << std::endl;
     int i = 0;
     llvm::Type *local_value_type;
     for(auto &it : NamedValues) {
-      std::cout << "it.first: " << it.first << std::endl << "it.second->getType(): ";
       // std::cout << "it.second: " << it.second << std::endl;
       local_value_type = it.second->getType();
       /* This is to stop adding more pointers to the local type */
@@ -1753,8 +1772,6 @@ public:
           locals_params[i++] = local_value_type;
         }
       }
-      it.second->getType()->print(llvm::outs());
-      std::cout << std::endl;
     }
     if(paramlist == nullptr) {
       switch(returntype) {
@@ -1790,7 +1807,6 @@ public:
       std::vector<llvm::Type *> argument_types(locals_params.size() + llvm_param_types.size());
       std::copy(llvm_param_types.begin(), llvm_param_types.end(), argument_types.begin());
       std::copy(locals_params.begin(), locals_params.end(), argument_types.begin() + llvm_param_types.size());
-      std::cout << "argument_types.size(): " << argument_types.size() << std::endl;
       switch(returntype) {
         case DataType::TYPE_int:
           return llvm::FunctionType::get(i32, argument_types, false);
@@ -1810,10 +1826,7 @@ public:
     //set argument names
     unsigned long int i = 0;
     //TODO : UPDATE THIS
-    FT->print(llvm::outs());
-    std:: cout << F->arg_size() << std::endl;
     for (auto &Arg : F->args()) {
-      std::cout << "arg: " << i << std::endl;
       if(paramlist == nullptr) {
         Arg.setName(std::string("local") + std::to_string(i++));
         continue;
@@ -1824,7 +1837,6 @@ public:
       }
       Arg.setName(paramlist->param_list[i++]->get_param_name());
     }
-    std::cout << "function header done: " << function_name << std::endl;
     return F;
   }
 
@@ -2083,8 +2095,6 @@ public:
         (*Translations)[arg_name] = arg_name;
         continue;
       }
-      std::cout << "arg_name: " << arg_name << std::endl;
-      std::cout << "OldNames: " << *it << std::endl;
       (*Translations)[*it] = arg_name;
       ++it;
     }
@@ -2095,9 +2105,8 @@ public:
       // llvm::Value *ptr = Builder.CreateGEP(alloca, c32(0));
       Builder.CreateStore(&Arg, alloca);
 
-      if(NamedValues.find(param_name) != NamedValues.end()) {
-        std::cout << "Warning: Param " << param_name << " already exists in NamedValues" << std::endl;
-      }
+      // if(NamedValues.find(param_name) != NamedValues.end()) {
+      // }
       // OldBindings.push_back(NamedValues[param_name]);
       DeclaredVariables.push_back(param_name);
       NamedValues[param_name] = alloca;
@@ -2116,6 +2125,7 @@ public:
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
         }
         NamedValues[var_name] = alloca;
+        Translations->insert(std::pair<std::string, std::string>(var_name, var_name));
       }
       else {
         ld->codegen();
