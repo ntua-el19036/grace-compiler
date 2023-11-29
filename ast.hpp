@@ -27,15 +27,20 @@ public:
 
   virtual llvm::Value *codegen() = 0;
 
-  virtual std::string get_translation(std::string local_name) {
+  virtual std::string get_translation_real_to_local(std::string real_name) {
+    std::cout << "looking up real " << real_name << std::endl;
     llvm::Function *Current_Function = Builder.GetInsertBlock()->getParent();
     std::string current_function_name = std::string(Current_Function->getName());
-    while(FunctionTranslationTables[current_function_name]->find(local_name) 
-      == FunctionTranslationTables[current_function_name]->end()) {
-      current_function_name = (*FunctionTranslationTables[current_function_name])[std::string("parent")];
-      Current_Function = TheModule->getFunction(current_function_name);
-    }
-    return (*FunctionTranslationTables[current_function_name])[local_name];
+    std::cout << "returns " << (*FunctionTranslationTablesRealToLocal[current_function_name])[real_name] << std::endl;
+    return (*FunctionTranslationTablesRealToLocal[current_function_name])[real_name];
+  }
+
+  virtual std::string get_translation_local_to_real(std::string local_name) {
+    std::cout << "looking up local" << local_name << std::endl;
+    llvm::Function *Current_Function = Builder.GetInsertBlock()->getParent();
+    std::string current_function_name = std::string(Current_Function->getName());
+    std::cout << "returns " << (*FunctionTranslationTablesLocalToReal[current_function_name])[local_name] << std::endl;
+    return (*FunctionTranslationTablesLocalToReal[current_function_name])[local_name];
   }
 
   void llvm_compile_and_dump(bool optimize = true)
@@ -44,7 +49,8 @@ public:
     TheModule = std::make_unique<llvm::Module>("grace program", TheContext);
     TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
     NamedValues = std::map<std::string, llvm::Value *>();
-    FunctionTranslationTables = std::map<std::string, std::map<std::string,std::string> *>();
+    FunctionTranslationTablesRealToLocal = std::map<std::string, std::map<std::string,std::string> *>();
+    FunctionTranslationTablesLocalToReal = std::map<std::string, std::map<std::string,std::string> *>();
     // NamedFunctions = std::map<std::string, llvm::Function *>();
     if (optimize)
     {
@@ -151,7 +157,8 @@ protected:
   }
 
   static std::map<std::string, llvm::Value *> NamedValues;
-  static std::map<std::string, std::map<std::string,std::string> *> FunctionTranslationTables; 
+  static std::map<std::string, std::map<std::string,std::string> *> FunctionTranslationTablesRealToLocal;
+  static std::map<std::string, std::map<std::string,std::string> *> FunctionTranslationTablesLocalToReal;
 };
 
 inline std::ostream &operator<<(std::ostream &out, const AST &t)
@@ -394,7 +401,7 @@ public:
   }
 
   virtual llvm::Value *llvm_get_array_offset(std::vector<llvm::Value *> *indices) override {
-    llvm::Value *alloca = NamedValues[get_translation(*var)];
+    llvm::Value *alloca = NamedValues[get_translation_real_to_local(*var)];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -404,7 +411,7 @@ public:
 
   virtual llvm::Value *llvm_get_value_ptr(bool isParam = false) override
   {
-    std::string translation = get_translation(*var);
+    std::string translation = get_translation_real_to_local(*var);
     llvm::Value *alloca = NamedValues[translation];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
@@ -434,7 +441,7 @@ public:
 
   virtual llvm::Value *codegen() override
   {
-    llvm::Value *alloca = NamedValues[get_translation(*var)];
+    llvm::Value *alloca = NamedValues[get_translation_real_to_local(*var)];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -750,13 +757,13 @@ public:
       user_param_count = args->expressions.size();
     }
     std::string caller_function_name = std::string(Builder.GetInsertBlock()->getParent()->getName());
-    
+
     std::map<std::string, llvm::Value *>::iterator it = NamedValues.begin();
     for(unsigned i = 0, e = CalleeF->arg_size(); i != e; ++i) {
       if(i >= user_param_count) { /* local variables */
         std::string param_name = std::string(argIt->getName());
-        // std::string translation = Expr::get_translation(param_name);
-        
+        // std::string translation = Expr::get_translation_real_to_local(param_name);
+
         if(it->second->getType()->isPointerTy()) {
           if(it->second->getType()->getPointerElementType()->isPointerTy()) {
             llvm::Value *ptr = Builder.CreateGEP(it->second, c32(0), "ptrtolocal");
@@ -972,7 +979,7 @@ public:
 
         Builder.CreateCondBr(l, ThenBB, ElseBB); //if l is false, go to else
         Builder.SetInsertPoint(ThenBB);
-        
+
         llvm::Value *r = right->codegen();
         while(r->getType()->isPointerTy()) {
           llvm::Value *tmp = Builder.CreateGEP(r, c32(0));
@@ -1011,7 +1018,7 @@ public:
 
         Builder.CreateCondBr(l, ElseBB, ThenBB); //if l is false, go to then
         Builder.SetInsertPoint(ThenBB);
-        
+
         llvm::Value *r = right->codegen();
         while(r->getType()->isPointerTy()) {
           llvm::Value *tmp = Builder.CreateGEP(r, c32(0));
@@ -2070,9 +2077,11 @@ public:
     std::vector<llvm::Value *> OldBindings;
     std::vector<std::string> OldNames;
     std::vector<std::string> DeclaredVariables;
-    FunctionTranslationTables[function_name] = new std::map<std::string, std::string>();
-    std::map<std::string, std::string> *Translations = FunctionTranslationTables[function_name];
-    Translations->insert(std::pair<std::string, std::string>(std::string("parent"), 
+    FunctionTranslationTablesRealToLocal[function_name] = new std::map<std::string, std::string>();
+    FunctionTranslationTablesLocalToReal[function_name] = new std::map<std::string, std::string>();
+    std::map<std::string, std::string> *RealToLocalTranslations = FunctionTranslationTablesRealToLocal[function_name];
+    std::map<std::string, std::string> *LocalToRealTranslations = FunctionTranslationTablesLocalToReal[function_name];
+    RealToLocalTranslations->insert(std::pair<std::string, std::string>(std::string("parent"),
       std::string(OuterBlock->getParent()->getName())));
     // std::cout << "Parent of " << function_name << " is " << (*Translations)[std::string("parent")] << std::endl;
 
@@ -2087,17 +2096,23 @@ public:
     std::vector<llvm::Function *> OldFunctionBindings;
     std::vector<std::string> DeclaredFunctions;
 
+    std::map<std::string, std::string> *OldLocalToRealTranslations = FunctionTranslationTablesLocalToReal[std::string(OuterBlock->getParent()->getName())];
     std::vector<std::string>::iterator it = OldNames.begin();
     for (auto argIt = TheFunction->arg_begin(); argIt != TheFunction->arg_end(); ++argIt) {
       llvm::Value *arg = &*argIt;
       std::string arg_name = std::string(arg->getName());
       if(argIt < TheFunction->arg_begin() + header->get_params_size()) {
-        (*Translations)[arg_name] = arg_name;
+        (*RealToLocalTranslations)[arg_name] = arg_name;
+        (*LocalToRealTranslations)[arg_name] = arg_name;
+        std::cout << "Translating " << arg_name << " to " << arg_name << std::endl;
         continue;
       }
-      (*Translations)[*it] = arg_name;
+      (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[*it]] = arg_name;
+      (*LocalToRealTranslations)[arg_name] = (*OldLocalToRealTranslations)[*it];
+      std::cout << "Translating " << (*OldLocalToRealTranslations)[*it] << " to " << arg_name << std::endl;
       ++it;
     }
+    std::cout << "Function " << function_name << std::endl;
 
     for(auto &Arg : TheFunction->args()) {
       std::string param_name = std::string(Arg.getName());
@@ -2125,7 +2140,9 @@ public:
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
         }
         NamedValues[var_name] = alloca;
-        Translations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        RealToLocalTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        LocalToRealTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        std::cout << "Translating (declared) " << var_name << " to " << var_name << std::endl;
       }
       else {
         ld->codegen();
@@ -2133,7 +2150,7 @@ public:
     }
     //handle function body
     block->codegen();
-    
+
     NamedValues.clear();
     for(unsigned i = 0, e = OldNames.size(); i != e; ++i) {
       NamedValues[OldNames[i]] = OldBindings[i];
@@ -2150,7 +2167,7 @@ public:
     if(OuterBlock->getParent()->getName() == "main") {
       Builder.CreateCall(TheFunction);
     }
-    
+
     // TheFPM->run(*TheFunction);
     return nullptr;
   }

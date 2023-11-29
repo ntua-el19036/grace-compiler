@@ -10,4 +10,5 @@ llvm::Type *AST::i32;
 llvm::Type *AST::i64;
 
 std::map<std::string, llvm::Value *> AST::NamedValues;
-std::map<std::string, std::map<std::string,std::string> *> AST::FunctionTranslationTables;  
+std::map<std::string, std::map<std::string,std::string> *> AST::FunctionTranslationTablesRealToLocal;
+std::map<std::string, std::map<std::string,std::string> *> AST::FunctionTranslationTablesLocalToReal;
