@@ -2207,8 +2207,8 @@ public:
       }
     }
     else {
-      L1 = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
-      Builder.SetInsertPoint(L1);
+      llvm::BasicBlock &lastBlock = TheFunction->back();
+      Builder.SetInsertPoint(&lastBlock, lastBlock.end());
       RealToLocalTranslations = FunctionTranslationTablesRealToLocal[function_name];
       LocalToRealTranslations = FunctionTranslationTablesLocalToReal[function_name];
     }
