@@ -124,6 +124,12 @@ public:
     entries = new std::list<STEntry>[capacity];
   }
 
+  ~HashTable() {
+    // std::cout << "deleting hash table" << std::endl;
+    delete[] entries;
+    
+  }
+
   void insertItem(STEntry *entry) {
     int index = hashFunction(entry->name);
     entry->hash_value = index;
@@ -198,9 +204,9 @@ public:
     hash_table = new HashTable(c);
   }
 
-  // ~SymbolTable() {
-  //   delete hash_table;
-  // }
+  ~SymbolTable() {
+    delete hash_table;
+  }
   void init_library_functions() {
     std::vector<std::tuple<DataType, PassingType, std::vector<int>, bool>> temp_param_vector;
     insert_function(std::string("readInteger"), DataType::TYPE_int, temp_param_vector);

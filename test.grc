@@ -1,22 +1,18 @@
 fun hello () : nothing
     var x:int;
-    fun f(a:int): nothing
-        var y:int;
-        fun g():nothing{
-            writeInteger(x);
-            x<-0;
-            writeInteger(x);
-            return;
-        }
+    fun g(y:int):nothing;
+    fun f(z:int):nothing;
+    fun g(y:int):nothing
+        var z:int;
     {
-        g();
-        writeString("f\n");
-        writeInteger(x);
-        x <-2;
+        f(y);
     }
+    fun f(x:int):nothing{
+        return;
+    }
+
 {
-    x <- 1;
-    f(x);
-    writeInteger(x);
-    writeChar('\n');
+    x<-0;
+    g(x);
+    return;
 }
