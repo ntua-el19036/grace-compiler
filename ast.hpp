@@ -2048,7 +2048,10 @@ public:
   }
 
   virtual llvm::Value *codegen() override {
-    llvm ::Function *TheFunction = header->codegen();
+    llvm::BasicBlock *OuterBlock = Builder.GetInsertBlock();
+    std::string function_parent_name = std::string(OuterBlock->getParent()->getName());
+
+    llvm::Function *TheFunction = header->codegen();
     llvm::BasicBlock *L1 = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
     Builder.SetInsertPoint(L1);
     std::string function_name = std::string(TheFunction->getName());
@@ -2056,6 +2059,42 @@ public:
     FunctionTranslationTablesLocalToReal[function_name] = new std::map<std::string, std::string>();
     std::map<std::string, std::string> *RealToLocalTranslations = FunctionTranslationTablesRealToLocal[function_name];
     std::map<std::string, std::string> *LocalToRealTranslations = FunctionTranslationTablesLocalToReal[function_name];
+
+    std::map<std::string, std::string> *OldLocalToRealTranslations = FunctionTranslationTablesLocalToReal[function_parent_name];
+    std::map<std::string, llvm::Value *>::iterator it = NamedValues[function_parent_name].begin();
+    for (auto argIt = TheFunction->arg_begin(); argIt != TheFunction->arg_end(); ++argIt) {
+      llvm::Value *arg = &*argIt;
+      std::string arg_name = std::string(arg->getName());
+      if(argIt < TheFunction->arg_begin() + header->get_params_size()) {
+        (*RealToLocalTranslations)[arg_name] = arg_name;
+        (*LocalToRealTranslations)[arg_name] = arg_name;
+        // std::cout << "Translating " << arg_name << " to " << arg_name << std::endl;
+        AST::logToFile("Translating arg " + arg_name + " to " + arg_name);
+        llvm::AllocaInst *alloca = Builder.CreateAlloca(argIt->getType(), nullptr, arg_name);
+        Builder.CreateStore(argIt, alloca);
+        AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
+        NamedValues[function_name][arg_name] = alloca;
+        continue;
+      }
+      AST::logToFile("old local to real for " + it->first + " is " + (*OldLocalToRealTranslations)[it->first]);
+      if((*RealToLocalTranslations).find((*OldLocalToRealTranslations)[it->first]) != (*RealToLocalTranslations).end()) {
+        AST::logToFile("FOUND OLD NAME = TO A PARAM NAME while Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
+        (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[it->first]] = (*OldLocalToRealTranslations)[it->first];
+      }
+      else {
+        (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[it->first]] = arg_name;
+        AST::logToFile("Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
+      }
+      (*LocalToRealTranslations)[arg_name] = (*OldLocalToRealTranslations)[it->first];
+      // std::cout << "Translating " << (*OldLocalToRealTranslations)[*it] << " to " << arg_name << std::endl;
+      llvm::AllocaInst *alloca = Builder.CreateAlloca(argIt->getType(), nullptr, arg_name);
+      Builder.CreateStore(argIt, alloca);
+      AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
+      NamedValues[function_name][arg_name] = alloca;
+      ++it;
+    }
+
+    Builder.SetInsertPoint(OuterBlock);
     return nullptr;
   }
 
