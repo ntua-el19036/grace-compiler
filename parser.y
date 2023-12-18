@@ -116,8 +116,8 @@ func_param_def:
 ;
 
 id_list:
-  T_id { $$ = new IdList($1); }
-| T_id ',' id_list { $3->append_id($1); $$ = $3; }
+  T_id { $$ = new IdList(new std::string("user_"+*$1)); }
+| T_id ',' id_list { $3->append_id(new std::string("user_"+*$1)); $$ = $3; }
 ;
 
 data_type:
@@ -191,7 +191,7 @@ func_call_stmt:
 ;
 
 l_value:
-  T_id { $$ = new Id($1, mylineno); }
+  T_id { $$ = new Id(new std::string("user_"+*$1), mylineno); }
 | T_string_literal { $$ = new StringLiteral($1, mylineno); }
 | l_value '[' expr ']' { $$ = new ArrayAccess($1, $3); }
 ;
