@@ -18,6 +18,20 @@
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/Transforms/Utils.h>
 
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+
+
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Target/TargetMachine.h"
+
+#include "llvm/Support/Host.h"
+
+// Define global flags
+extern bool final_code_stdout;
+extern bool intermediate_code_stdout;
+extern std::string filepath;
+
 extern void yyerror2(const char *msg, int line_number);
 
 class AST
@@ -112,8 +126,48 @@ public:
     }
     // Optimize!
     TheFPM->run(*main);
+
+    // Initialize all targets
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmPrinters();
+
+    auto TargetTriple = llvm::sys::getDefaultTargetTriple();
+    TheModule->setTargetTriple(TargetTriple);
+    std::string Error;
+    auto Target = llvm::TargetRegistry::lookupTarget(TargetTriple, Error);
+
+    auto CPU = "generic";
+    auto Features = "";
+
+    llvm::TargetOptions opt;
+    auto RM = llvm::Optional<llvm::Reloc::Model>();
+    auto TheTargetMachine = Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
+
+    TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+
+    // Emit assembly code
+    std::error_code EC;
+    llvm::raw_fd_ostream dest(filepath + ".asm", EC);
+
+    llvm::legacy::PassManager pass;
+    auto FileType = llvm::CGFT_AssemblyFile;
+
     // Print out the IR.
-    TheModule->print(llvm::outs(), nullptr);
+    if (intermediate_code_stdout) {
+      TheModule->print(llvm::outs(), nullptr);
+    } else if (final_code_stdout) {
+      TheTargetMachine->addPassesToEmitFile(pass, llvm::outs(), nullptr, FileType);
+    } else {
+      TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType);
+      llvm::raw_fd_ostream dest(filepath + ".imm", EC);
+      TheModule->print(dest, nullptr);
+    }
+
+     pass.run(*TheModule);
+     dest.flush();
+
   }
 
 protected:

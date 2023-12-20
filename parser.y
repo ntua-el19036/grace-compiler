@@ -225,9 +225,53 @@ cond:
 ;
 
 
-%%
 
-int main() {
+%%
+extern FILE *yyin;
+
+int main(int argc, char** argv) {
+  bool usage_error = false;
+  std::string filename;
+
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg == "-f") {
+      if (intermediate_code_stdout) {
+	usage_error = true;
+	break;
+      }
+      final_code_stdout = true;
+    } else if (arg == "-i") {
+      if (final_code_stdout) {
+	usage_error = true;
+	break;
+      }
+      intermediate_code_stdout = true;
+    } else if (filename.empty()) {
+      filename = arg;
+      std::string::size_type idx = filename.rfind('.');
+      filepath = filename.substr(0, idx);
+    } else {
+      usage_error = true;
+    }
+  }
+
+  if (filename.empty()) {
+    usage_error = true;
+  }
+
+  if (usage_error) {
+    std::cerr << "Usage: " << argv[0] << " [-f | -i] <source_file.grc>" << std::endl;
+    return 1;
+  }
+
+  FILE *file = fopen(filename.c_str(), "r");
+
+  if (!file) {
+      std::cerr << "Could not open file: " << filename << std::endl;
+      return 1;
+  }
+  yyin = file;
   int result = yyparse();
   //if (result == 0) printf("Success.\n");
   return result;

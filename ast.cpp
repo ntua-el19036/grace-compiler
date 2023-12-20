@@ -1,5 +1,9 @@
 #include "ast.hpp"
 
+bool final_code_stdout = false;
+bool intermediate_code_stdout = false;
+std::string filepath;
+
 llvm::LLVMContext AST::TheContext;
 llvm::IRBuilder<> AST::Builder(TheContext);
 std::unique_ptr<llvm::Module> AST::TheModule;
