@@ -1,5 +1,6 @@
 #include "ast.hpp"
 
+bool optimize = false;
 bool final_code_stdout = false;
 bool intermediate_code_stdout = false;
 std::string filepath;

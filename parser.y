@@ -235,7 +235,9 @@ int main(int argc, char** argv) {
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
-    if (arg == "-f") {
+    if (arg == "-O") {
+      optimize = true;
+    } else if (arg == "-f") {
       if (intermediate_code_stdout) {
 	usage_error = true;
 	break;
@@ -261,7 +263,7 @@ int main(int argc, char** argv) {
   }
 
   if (usage_error) {
-    std::cerr << "Usage: " << argv[0] << " [-f | -i] <source_file.grc>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << "[-O] [-f | -i] <source_file.grc>" << std::endl;
     return 1;
   }
 

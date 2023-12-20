@@ -28,6 +28,7 @@
 #include "llvm/Support/Host.h"
 
 // Define global flags
+extern bool optimize;
 extern bool final_code_stdout;
 extern bool intermediate_code_stdout;
 extern std::string filepath;
@@ -125,7 +126,8 @@ public:
       exit(1);
     }
     // Optimize!
-    TheFPM->run(*main);
+    if (optimize)
+      TheFPM->run(*main);
 
     // Initialize all targets
     llvm::InitializeAllTargetInfos();
