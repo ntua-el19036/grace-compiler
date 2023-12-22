@@ -494,7 +494,7 @@ public:
   {
     std::string current_function_name = std::string(Builder.GetInsertBlock()->getParent()->getName());
     std::string translation = get_translation_real_to_local(*var);
-    AST::logToFile("looking up " + translation + " in " + current_function_name);
+    // AST::logToFile("looking up " + translation + " in " + current_function_name);
     llvm::Value *alloca = NamedValues[current_function_name][translation];
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
@@ -844,28 +844,28 @@ public:
     std::string caller_function_name = std::string(Builder.GetInsertBlock()->getParent()->getName());
 
     // std::map<std::string, llvm::Value *>::iterator it = NamedValues.begin();
-    Expr::logToFile("calling: " + callee_function_name + " from: " + caller_function_name);
-    Expr::logToFile("user param count: " + std::to_string(user_param_count));
-    Expr::logToFile("signature arg count: " + std::to_string(CalleeF->arg_size()));
+    // Expr::logToFile("calling: " + callee_function_name + " from: " + caller_function_name);
+    // Expr::logToFile("user param count: " + std::to_string(user_param_count));
+    // Expr::logToFile("signature arg count: " + std::to_string(CalleeF->arg_size()));
 
     for(unsigned i = 0, e = CalleeF->arg_size(); i != e; ++i) {
       if(i >= user_param_count) { /* local variables */
         std::string param_name = std::string(argIt->getName());
-        Expr::logToFile("param_name: " + param_name);
-        Expr::logToFile("callee_function_name: " + callee_function_name);
+        // Expr::logToFile("param_name: " + param_name);
+        // Expr::logToFile("callee_function_name: " + callee_function_name);
         std::map<std::string, std::string> *CalleeFunctionLocalToRealTranslations = FunctionTranslationTablesLocalToReal[callee_function_name];
         if(CalleeFunctionLocalToRealTranslations == nullptr) {
-          Expr::logToFile("CalleeFunctionLocalToRealTranslations is null");
+          // Expr::logToFile("CalleeFunctionLocalToRealTranslations is null");
         }
-        Expr::logToFile("looking up: " + param_name + " in local to real of " + callee_function_name);
+        // Expr::logToFile("looking up: " + param_name + " in local to real of " + callee_function_name);
         std::string real_param_name = (*CalleeFunctionLocalToRealTranslations)[param_name];
-        Expr::logToFile("real_param_name: " + real_param_name);
+        // Expr::logToFile("real_param_name: " + real_param_name);
         std::map<std::string, std::string> *CallerFunctionRealToLocalTranslations = FunctionTranslationTablesRealToLocal[caller_function_name];
         std::string local_param_name = (*CallerFunctionRealToLocalTranslations)[real_param_name];
-        Expr::logToFile("local param: " + local_param_name + " real param: " + real_param_name + " param name " + param_name);
+        // Expr::logToFile("local param: " + local_param_name + " real param: " + real_param_name + " param name " + param_name);
         llvm::Value *arg_value = NamedValues[caller_function_name][local_param_name];
         // std::cout << "local param: " << local_param_name << " real param: " << real_param_name << " param name " << param_name << std::endl;
-        Expr::logToFile("local param: " + local_param_name + " real param: " + real_param_name + " param name " + param_name);
+        // Expr::logToFile("local param: " + local_param_name + " real param: " + real_param_name + " param name " + param_name);
         if(arg_value->getType()->isPointerTy()) {
           if(arg_value->getType()->getPointerElementType()->isPointerTy()) {
             llvm::Value *ptr = Builder.CreateGEP(arg_value, c32(0), "ptrtolocal");
@@ -883,7 +883,7 @@ public:
         continue;
       }
       if(argIt->getType()->isPointerTy()) {
-        Expr::logToFile("pointer param: " + std::string(argIt->getName()));
+        // Expr::logToFile("pointer param: " + std::string(argIt->getName()));
         // if(args->expressions[i]->llvm_get_value_ptr()->getType()->isArrayTy()) {
         // }
         llvm::Value * ptr = args->expressions[i]->llvm_get_value_ptr(true);
@@ -2125,27 +2125,27 @@ public:
         (*RealToLocalTranslations)[arg_name] = arg_name;
         (*LocalToRealTranslations)[arg_name] = arg_name;
         // std::cout << "Translating " << arg_name << " to " << arg_name << std::endl;
-        AST::logToFile("Translating arg " + arg_name + " to " + arg_name);
+        // AST::logToFile("Translating arg " + arg_name + " to " + arg_name);
         llvm::AllocaInst *alloca = Builder.CreateAlloca(argIt->getType(), nullptr, arg_name);
         Builder.CreateStore(argIt, alloca);
-        AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
+        // AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
         NamedValues[function_name][arg_name] = alloca;
         continue;
       }
-      AST::logToFile("old local to real for " + it->first + " is " + (*OldLocalToRealTranslations)[it->first]);
+      // AST::logToFile("old local to real for " + it->first + " is " + (*OldLocalToRealTranslations)[it->first]);
       if((*RealToLocalTranslations).find((*OldLocalToRealTranslations)[it->first]) != (*RealToLocalTranslations).end()) {
-        AST::logToFile("FOUND OLD NAME = TO A PARAM NAME while Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
+        // AST::logToFile("FOUND OLD NAME = TO A PARAM NAME while Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
         (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[it->first]] = (*OldLocalToRealTranslations)[it->first];
       }
       else {
         (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[it->first]] = arg_name;
-        AST::logToFile("Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
+        // AST::logToFile("Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
       }
       (*LocalToRealTranslations)[arg_name] = (*OldLocalToRealTranslations)[it->first];
       // std::cout << "Translating " << (*OldLocalToRealTranslations)[*it] << " to " << arg_name << std::endl;
       llvm::AllocaInst *alloca = Builder.CreateAlloca(argIt->getType(), nullptr, arg_name);
       Builder.CreateStore(argIt, alloca);
-      AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
+      // AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
       NamedValues[function_name][arg_name] = alloca;
       ++it;
     }
@@ -2163,7 +2163,7 @@ class FunctionDefinition : public LocalDefinition
 public:
   FunctionDefinition(Header *h, LocalDefinitionList *d, Block *b, int lineno = 0) : header(h), definition_list(d), block(b) {line_number = lineno;}
   ~FunctionDefinition() {
-    AST::logToFile("Deleting function definition");
+    // AST::logToFile("Deleting function definition");
     delete header;
     delete definition_list;
     delete block;
@@ -2237,27 +2237,27 @@ public:
           (*RealToLocalTranslations)[arg_name] = arg_name;
           (*LocalToRealTranslations)[arg_name] = arg_name;
           // std::cout << "Translating " << arg_name << " to " << arg_name << std::endl;
-          AST::logToFile("Translating arg " + arg_name + " to " + arg_name);
+          // AST::logToFile("Translating arg " + arg_name + " to " + arg_name);
           llvm::AllocaInst *alloca = Builder.CreateAlloca(argIt->getType(), nullptr, arg_name);
           Builder.CreateStore(argIt, alloca);
-          AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
+          // AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
           NamedValues[function_name][arg_name] = alloca;
           continue;
         }
-        AST::logToFile("old local to real for " + it->first + " is " + (*OldLocalToRealTranslations)[it->first]);
+        // AST::logToFile("old local to real for " + it->first + " is " + (*OldLocalToRealTranslations)[it->first]);
         if((*RealToLocalTranslations).find((*OldLocalToRealTranslations)[it->first]) != (*RealToLocalTranslations).end()) {
-          AST::logToFile("FOUND OLD NAME = TO A PARAM NAME while Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
+          // AST::logToFile("FOUND OLD NAME = TO A PARAM NAME while Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
           (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[it->first]] = (*OldLocalToRealTranslations)[it->first];
         }
         else {
           (*RealToLocalTranslations)[(*OldLocalToRealTranslations)[it->first]] = arg_name;
-          AST::logToFile("Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
+          // AST::logToFile("Translating local " + (*OldLocalToRealTranslations)[it->first] + " to " + arg_name);
         }
         (*LocalToRealTranslations)[arg_name] = (*OldLocalToRealTranslations)[it->first];
         // std::cout << "Translating " << (*OldLocalToRealTranslations)[*it] << " to " << arg_name << std::endl;
         llvm::AllocaInst *alloca = Builder.CreateAlloca(argIt->getType(), nullptr, arg_name);
         Builder.CreateStore(argIt, alloca);
-        AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
+        // AST::logToFile("Creating alloca for " + arg_name + " in function " + function_name);
         NamedValues[function_name][arg_name] = alloca;
         ++it;
       }
@@ -2313,7 +2313,7 @@ public:
         NamedValues[function_name][var_name] = alloca;
         RealToLocalTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
         LocalToRealTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
-        AST::logToFile("Translating (declared) " + var_name + " to " + var_name);
+        // AST::logToFile("Translating (declared) " + var_name + " to " + var_name);
         // std::cout << "Translating (declared) " << var_name << " to " << var_name << std::endl;
       }
       else {
