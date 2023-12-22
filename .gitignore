@@ -1,5 +1,6 @@
 programs
 compiler
+gracec
 lexer
 lexer.cpp
 lexer.o

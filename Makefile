@@ -2,7 +2,7 @@ CXX=c++
 CXXFLAGS=-Wall -std=c++14 `llvm-config-11 --cxxflags`
 LDFLAGS=`llvm-config-11 --ldflags --system-libs --libs all`
 
-default: compiler
+default: gracec
 
 lexer.cpp: lexer.l
 	flex -s -o lexer.cpp lexer.l
@@ -17,11 +17,11 @@ parser.cpp parser.hpp: parser.y
 
 parser.o: parser.cpp lexer.hpp ast.hpp symbol.hpp
 
-compiler: lexer.o parser.o ast.o
+gracec: lexer.o parser.o ast.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	$(RM) *.o parser.cpp parser.hpp lexer lexer.cpp core *~
+	$(RM) *.output *.s *.out *.ll *.o parser.cpp parser.hpp lexer lexer.cpp core *~
 
 distclean: clean
-	$(RM) compiler
+	$(RM) gracec

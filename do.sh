@@ -1,5 +1,4 @@
 #!/bin/bash
 
-./compiler < $1 > a.ll
-llc-11 -o a.s a.ll
+llc-11 -o a.s $1
 clang-11 -o a.out a.s lib.a
