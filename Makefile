@@ -21,7 +21,7 @@ gracec: lexer.o parser.o ast.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	$(RM) *.output *.s *.out *.ll *.o parser.cpp parser.hpp lexer lexer.cpp core *~
+	$(RM) *.output *.s *.out *.ll *.asm *.imm *.o parser.cpp parser.hpp lexer lexer.cpp core *~
 
 distclean: clean
 	$(RM) gracec

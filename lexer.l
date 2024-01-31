@@ -11,7 +11,7 @@
 
 int mylineno = 1;
 %}
-
+%option nounput
 %option yylineno
 
 L [a-zA-Z]
