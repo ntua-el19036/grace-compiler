@@ -496,6 +496,11 @@ public:
     std::string translation = get_translation_real_to_local(*var);
     // AST::logToFile("looking up " + translation + " in " + current_function_name);
     llvm::Value *alloca = NamedValues[current_function_name][translation];
+    if(NamedValues[current_function_name][*var]) {
+      // AST::logToFile("translation for var exists");
+      // AST::logToFile("translation: " + NamedValues[current_function_name][*var]->getName().str());
+      alloca = NamedValues[current_function_name][*var];
+    }
     if (!alloca) //this won't happen because we check for undeclared variables in sem
     {
       yyerror2("Unknown variable name", line_number);
@@ -613,8 +618,8 @@ public:
     }
 
     if (isParam && !(count == indices->size()))
-      indices->insert(indices->begin(), c32(0));
-
+      // indices->insert(indices->begin(), c32(0));
+      indices->push_back(c32(0));
     if (base->getType()->isPointerTy() && base->getType()->getPointerElementType()->isPointerTy())
       base = Builder.CreateLoad(base, "array12312");
     llvm::Value *ptr = Builder.CreateGEP(base, *indices, "elementptr");
@@ -2311,8 +2316,23 @@ public:
           alloca = Builder.CreateGEP(alloca, std::vector<llvm::Value *>({c32(0), c32(0)}), var_name);
         }
         NamedValues[function_name][var_name] = alloca;
-        RealToLocalTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
-        LocalToRealTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        std::pair<std::map<std::string, std::string>::iterator, bool> ret;
+        ret = RealToLocalTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        if(!ret.second) {
+          // AST::logToFile("Variable " + var_name + " already declared in function " + function_name + " OVERWRITING");
+          (*RealToLocalTranslations)[var_name] = var_name;
+          // RealToLocalTranslations->emplace(var_name, var_name);
+        }
+        ret = LocalToRealTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        if(!ret.second) {
+          // AST::logToFile("Variable " + var_name + " already declared in function " + function_name + " OVERWRITING");
+          (*LocalToRealTranslations)[var_name] = var_name;
+          // LocalToRealTranslations->emplace(var_name, var_name);
+        }
+        // AST::logToFile("Translating (declared) " + var_name + " to " + var_name + " in function " + function_name);
+        // std::cout << "Translating (declared) " << var_name << " to " << var_name << std::endl;
+        // RealToLocalTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
+        // LocalToRealTranslations->insert(std::pair<std::string, std::string>(var_name, var_name));
         // AST::logToFile("Translating (declared) " + var_name + " to " + var_name);
         // std::cout << "Translating (declared) " << var_name << " to " << var_name << std::endl;
       }
